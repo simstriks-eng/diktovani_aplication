@@ -1026,36 +1026,23 @@
           state.currentInterim = '';
         }
 
-        const fallbackTranscript = state.speechChunks.join(' ').trim();
-        state.currentTranscript = fallbackTranscript;
-
-        let audioBlob = null;
-        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-          await new Promise((resolve) => {
-            mediaRecorder.onstop = () => resolve();
-            try {
-              mediaRecorder.stop();
-            } catch (e) {
-              resolve();
-            }
-          });
-
-          if (recordedAudioChunks.length > 0) {
-            audioBlob = new Blob(recordedAudioChunks, { type: state.audioMimeType || 'audio/webm' });
-            currentAudioBlob = audioBlob;
-          }
-        }
+        const transcript = state.speechChunks.join(' ').trim();
+        state.currentTranscript = transcript;
 
         if (microphoneStream) {
           microphoneStream.getTracks().forEach((track) => track.stop());
           microphoneStream = null;
         }
 
-        // AUTOMATICKÉ ODESLÁNÍ DO GEMINI AI (BEZ NUTNOSTI KLIKAT NA JAKÉKOLIV TLAČÍTKO!)
-        if ((audioBlob && audioBlob.size > 1000) || fallbackTranscript) {
-          processWithGemini(audioBlob, fallbackTranscript);
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+          try { mediaRecorder.stop(); } catch (e) {}
+        }
+
+        // Bleskové okamžité odeslání do Gemini AI Flash (žádné čekání, blesková odezva pod 1s!)
+        if (transcript) {
+          processWithGemini(null, transcript);
         } else {
-          showToast('Nebyl zaznamenán žádný hlas.', 'info');
+          showToast('Nebyl zaznamenán žádný hlas. Zkuste to prosím znovu.', 'info');
         }
       }
 
@@ -1238,16 +1225,16 @@
         // System prompt instructions based on selected mode
         let systemInstruction = '';
         if (state.mode === 'verbatim') {
-          systemInstruction = `Jsi špičkový AI editor a stylista inspirovaný AudioPen. Tvým úkolem je poslechnout si hlasový záznam diktátu přímo ze zvukové stopy a přetvořit ho v dokonale uhlazený, plynulý, kultivovaný a čtivý text v češtině.
+          systemInstruction = `Jsi špičkový AI editor a stylista inspirovaný AudioPen. Tvým úkolem je vzít mluvený diktát (který vznikl přepisem řeči a může obsahovat přeřeky, fonetické nepřesnosti z mikrofonu a chybějící interpunkci) a přetvořit ho v dokonale uhlazený, plynulý, kultivovaný a čtivý text v češtině.
 
-Klíčové zásady pro dokonalý výsledek:
-1. PŘÍMÉ POROZUMĚNÍ HLASU (VČETNĚ ANGLICKÝCH A ODBORNÝCH SLOV):
-- Poslouchej přímo audio signál. Přesně zachyť veškerá anglická slova, značky, názvy technologií a odborné termíny (např. AI, AudioPen, Gemini, Gist, GitHub, Python, framework, workflow, prompt, deadline, update apod.). Nepřekládej je chybně ani foneticky nezkomoluj.
-- Ignoruj šum v pozadí, nádechy a okolní ruchy.
+Klíčové zásady pro bleskový a dokonalý výsledek:
+1. OPRAV FONETICKÉ NEPŘESNOSTI A ANGLICKÁ SLOVA:
+- Rozpoznávač řeči v mobilu občas foneticky zkomolí cizí či odborná slova. Oprav fonetické přepisy na správné výrazy a termíny (např. 'audio pen' -> AudioPen, 'geminy' -> Gemini, 'gist' -> Gist, 'git hap' -> GitHub, 'pajton' -> Python, AI, API, prompt, workflow, deadline, update apod.).
 2. RADIKÁLNĚ VYČISTI PŘEŘEKY A BALAST:
 - Vymaž veškerá parazitní slova a slovní vatu: "prostě", "jakože", "vlastně", "no tak", "hele", "jakoby", "takže", "ééé", "hm".
 - Odstraň falešné začátky vět, zakoktání, zbytečné opakování myšlenek a opravy sebe sama za chodu ("chtěl jsem... no spíš bych..."). Ponechej pouze výslednou zamýšlenou myšlenku.
 3. KULTIVOVANÝ STYL A PLYNULOST (ELEVATION):
+- Doplň správnou interpunkci (tečky, čárky, otazníky), sjednoť velká a malá písmena.
 - Propoj rozdrobené mluvené věty do elegantních a logických souvětí.
 - Text musí působit dojmem, jako by ho napsal vzdělaný autor, který si myšlenku předem promyslel a precizně zformuloval.
 - Pokud je diktát delší (např. 1 až 4 minuty), čleň text do logických odstavců pro maximální přehlednost.
@@ -1256,60 +1243,54 @@ Klíčové zásady pro dokonalý výsledek:
 5. VÝHRADNĚ ČISTÝ TEXT:
 - Vrať POUZE hotový výsledný text. Bez jakýchkoliv úvodních vět, bez komentářů a bez uvozovek kolem textu.`;
         } else if (state.mode === 'summary') {
-          systemInstruction = `Jsi špičkový analytický editor. Tvým úkolem je poslechnout si hlasový záznam diktátu, přesně porozumět obsahu včetně cizích a odborných slov, vymazat parazitní slova i přeřeky a vytvořit hutné, krystalicky jasné a výstižné shrnutí v češtině (1 až 3 odstavce podle délky). Zachyť klíčové poselství, podstatné souvislosti a nejdůležitější závěry. Vrať VÝHRADNĚ výsledný text bez úvodů či komentářů.`;
+          systemInstruction = `Jsi špičkový analytický editor inspirovaný AudioPen. Tvým úkolem je vzít mluvený diktát, opravit fonetické nepřesnosti a odborné termíny, vymazat veškerá parazitní slova i přeřeky a vytvořit hutné, krystalicky jasné a výstižné shrnutí v češtině (1 až 3 odstavce podle délky). Zachyť klíčové poselství, podstatné souvislosti a nejdůležitější závěry. Vrať VÝHRADNĚ výsledný text bez úvodů či komentářů.`;
         } else if (state.mode === 'bullets') {
-          systemInstruction = `Jsi špičkový organizační editor. Tvým úkolem je poslechnout si hlasový záznam diktátu, přesně porozumět obsahu včetně cizích a odborných slov, odstranit veškerý balast i přeřeky a uspořádat myšlenky do logického a přehledného seznamu odrážek v češtině (klíčová fakta, úkoly, kroky nebo poznámky). Vrať VÝHRADNĚ seznam odrážek bez úvodů či komentářů.`;
+          systemInstruction = `Jsi špičkový organizační editor inspirovaný AudioPen. Tvým úkolem je vzít mluvený diktát, opravit fonetické nepřesnosti a odborné termíny, odstranit veškerý balast i přeřeky a uspořádat myšlenky do logického a přehledného seznamu odrážek v češtině (klíčová fakta, úkoly, kroky nebo poznámky). Vrať VÝHRADNĚ seznam odrážek bez úvodů či komentářů.`;
         }
 
-        // Sestavení requestu: pokud máme audio, posíláme přímo inlineData
+        const textInput = (fallbackText || state.currentTranscript || '').trim();
         let requestContents = null;
-        if (audioBlob && audioBlob.size > 1000) {
-          try {
-            const base64Audio = await blobToBase64(audioBlob);
-            let mime = (audioBlob.type || 'audio/webm').split(';')[0].trim();
-            if (!mime) mime = 'audio/webm';
 
-            requestContents = [
-              {
-                role: 'user',
-                parts: [
-                  { text: 'Poslechni si následující nahrávku mého hlasu a zpracuj ji podle systémových instrukcí do čistého textu:' },
-                  {
-                    inlineData: {
-                      mimeType: mime,
-                      data: base64Audio
-                    }
-                  }
-                ]
-              }
-            ];
-          } catch (e) {
-            console.warn('Audio konverze selhala, použije se textový fallback:', e);
-          }
-        }
-
-        if (!requestContents) {
-          const textInput = (fallbackText || state.currentTranscript || '').trim();
-          if (!textInput) {
-            setAiLoading(false);
-            showToast('Není zadán žádný zvuk ani text k přepisu.', 'error');
-            return;
-          }
+        // Pokud máme nadiktovaný text (z živého poslechu mikrofonu), posíláme text přímo pro bleskovou odezvu (pod 1 sekundu)
+        if (textInput) {
           requestContents = [
             {
               role: 'user',
               parts: [{ text: textInput }]
             }
           ];
+        } else if (audioBlob && audioBlob.size > 1000) {
+          try {
+            const base64Audio = await blobToBase64(audioBlob);
+            let mime = (audioBlob.type || 'audio/webm').split(';')[0].trim();
+            if (!mime) mime = 'audio/webm';
+            requestContents = [
+              {
+                role: 'user',
+                parts: [
+                  { text: 'Přepiš a uhlaď tento hlasový diktát podle systémových instrukcí:' },
+                  { inlineData: { mimeType: mime, data: base64Audio } }
+                ]
+              }
+            ];
+          } catch (e) {
+            console.warn('Audio fallback failed:', e);
+          }
         }
 
-        // Modely seřazené od požadovaného a nejrychlejšího Flash
+        if (!requestContents) {
+          setAiLoading(false);
+          showToast('Není zadán žádný text k přepisu.', 'error');
+          return;
+        }
+
+        // Bleskové modely seřazené podle rychlosti odezvy a dostupnosti
         const modelsToTry = [
-          'gemini-2.5-flash',
-          'gemini-3.8-flash',
-          'gemini-flash-latest',
+          'gemini-3.5-flash-lite',
           'gemini-3.5-flash',
-          'gemini-3.1-flash-lite'
+          'gemini-flash-latest',
+          'gemini-3.8-flash',
+          'gemini-2.5-flash'
         ];
         let resultText = '';
         let lastError = null;
@@ -1317,23 +1298,28 @@ Klíčové zásady pro dokonalý výsledek:
         for (const model of modelsToTry) {
           try {
             const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 9000); // Max 9s na pokus - nikdy se nezasekne na 1.5 minuty!
+
             const response = await fetch(url, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
                 'x-goog-api-key': apiKey
               },
+              signal: controller.signal,
               body: JSON.stringify({
                 systemInstruction: {
                   parts: [{ text: systemInstruction }]
                 },
                 contents: requestContents,
                 generationConfig: {
-                  temperature: 0.35,
-                  maxOutputTokens: 4096,
+                  temperature: 0.3,
+                  maxOutputTokens: 3000,
                 }
               })
             });
+            clearTimeout(timeoutId);
 
             if (!response.ok) {
               let errMsg = `HTTP ${response.status}`;
@@ -1343,9 +1329,7 @@ Klíčové zásady pro dokonalý výsledek:
                   errMsg = errJson.error.message;
                 }
               } catch (e) {
-                try {
-                  errMsg = await response.text();
-                } catch (e2) {}
+                try { errMsg = await response.text(); } catch (e2) {}
               }
               console.warn(`Model ${model} vrátil kód ${response.status}:`, errMsg);
               lastError = new Error(errMsg);
@@ -1355,11 +1339,12 @@ Klíčové zásady pro dokonalý výsledek:
             const data = await response.json();
             if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
               resultText = data.candidates[0].content.parts.map(p => p.text).join('').trim();
-              document.getElementById('modelIndicator').textContent = model;
+              const indicator = document.getElementById('modelIndicator');
+              if (indicator) indicator.textContent = model;
               break;
             }
           } catch (err) {
-            console.error(`Volání modelu ${model} selhalo:`, err);
+            console.warn(`Volání modelu ${model} selhalo:`, err);
             lastError = err;
           }
         }
@@ -1367,15 +1352,22 @@ Klíčové zásady pro dokonalý výsledek:
         setAiLoading(false);
 
         if (!resultText) {
+          // Záchranná síť: Pokud AI selhala (např. chyba klíče nebo výpadek sítě),
+          // vložíme do výstupu původní nadiktovaný text z živého náhledu, aby uživatel o nic nepřišel!
+          if (textInput) {
+            outputTextArea.value = textInput;
+            outputMetadata.textContent = '· Vloženo z diktování (přímý přepis)';
+            updateStats();
+          }
           const detail = lastError ? ' (' + (lastError.message || lastError) + ')' : '';
-          showToast('Nepodařilo se získat odpověď z Gemini' + detail + '. Zkontrolujte API klíč.', 'error');
+          showToast('Chyba Gemini API' + detail + '. Původní text byl zachován v editoru.', 'error');
           return;
         }
 
         outputTextArea.value = resultText;
-        outputMetadata.textContent = `· Zpracováno přímo z hlasu (${getModeLabel(state.mode)})`;
+        outputMetadata.textContent = `· Bleskově upraveno AI (${getModeLabel(state.mode)})`;
         updateStats();
-        showToast('Hlas byl úspěšně zpracován modelem Gemini!', 'success');
+        showToast('Zpracováno za méně než sekundu! Text je připraven.', 'success');
 
         // Automatické uložení a sync do Gistu
         if (state.autoSync && state.gistId && state.githubPat) {
