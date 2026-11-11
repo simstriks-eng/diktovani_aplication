@@ -835,28 +835,74 @@
           recognition.lang = state.speechLang || 'cs-CZ';
 
           recognition.onstart = () => {
-            // Session started / restarted
+            state.currentSessionTranscript = '';
           };
 
+          function mergeCleanTranscript(chunks, currentSession) {
+            const parts = [];
+            for (const c of chunks) {
+              const trimmed = (c || '').trim();
+              if (!trimmed) continue;
+              const prev = parts[parts.length - 1] || '';
+              if (trimmed === prev) continue;
+              if (prev && trimmed.startsWith(prev)) {
+                parts[parts.length - 1] = trimmed;
+              } else if (!prev || !prev.endsWith(trimmed)) {
+                parts.push(trimmed);
+              }
+            }
+            const cur = (currentSession || '').trim();
+            if (cur) {
+              const prev = parts[parts.length - 1] || '';
+              if (cur !== prev) {
+                if (prev && cur.startsWith(prev)) {
+                  parts[parts.length - 1] = cur;
+                } else if (!prev || !prev.endsWith(cur)) {
+                  parts.push(cur);
+                }
+              }
+            }
+            let combined = parts.join(' ').replace(/\s+/g, ' ').trim();
+            // Ochrana proti zdvojení celého bloku v mobilním prohlížeči
+            const words = combined.split(' ');
+            if (words.length >= 8 && words.length % 2 === 0) {
+              const half = words.length / 2;
+              const firstHalf = words.slice(0, half).join(' ');
+              const secondHalf = words.slice(half).join(' ');
+              if (firstHalf.toLowerCase() === secondHalf.toLowerCase()) {
+                combined = firstHalf;
+              }
+            }
+            return combined;
+          }
+
           recognition.onresult = (event) => {
-            let interimTranscript = '';
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-              const transcript = event.results[i][0].transcript;
+            const finalSegments = [];
+            let sessionInterim = '';
+            for (let i = 0; i < event.results.length; ++i) {
+              const t = (event.results[i][0].transcript || '').trim();
+              if (!t) continue;
               if (event.results[i].isFinal) {
-                const trimmed = transcript.trim();
-                if (trimmed) {
-                  state.speechChunks.push(trimmed);
+                const prevSeg = finalSegments[finalSegments.length - 1] || '';
+                if (t !== prevSeg) {
+                  if (prevSeg && t.startsWith(prevSeg)) {
+                    finalSegments[finalSegments.length - 1] = t;
+                  } else {
+                    finalSegments.push(t);
+                  }
                 }
               } else {
-                interimTranscript += transcript;
+                sessionInterim += (sessionInterim ? ' ' : '') + t;
               }
             }
 
-            state.currentInterim = interimTranscript;
-            const fullFinal = state.speechChunks.join(' ').trim();
-            const displayText = (fullFinal ? fullFinal + ' ' : '') + interimTranscript;
-            state.currentTranscript = displayText.trim();
-            rawTranscriptText.textContent = displayText.trim() || 'Poslouchám váš hlas...';
+            const sessionFinal = finalSegments.join(' ').trim();
+            const currentSessionFull = ((sessionFinal ? sessionFinal + ' ' : '') + sessionInterim.trim()).trim();
+            state.currentSessionTranscript = currentSessionFull;
+
+            const displayText = mergeCleanTranscript(state.speechChunks, currentSessionFull);
+            state.currentTranscript = displayText;
+            rawTranscriptText.textContent = displayText || 'Poslouchám váš hlas...';
             rawTranscriptSection.classList.remove('hidden');
           };
 
@@ -873,14 +919,17 @@
           };
 
           recognition.onend = () => {
-            // Mobilní prohlížeče (Chrome/Safari) samy ukončují relaci po 3-5s ticha nebo po cca 60 sekundách.
-            // Aby mohl uživatel diktovat 4+ minuty bez přerušení jako v AudioPen,
-            // pokud uživatel nezmáčkl Stop, okamžitě obnovíme novou relaci a navážeme na dosavadní text!
             if (state.isRecording) {
-              if (state.currentInterim && state.currentInterim.trim()) {
-                state.speechChunks.push(state.currentInterim.trim());
-                state.currentInterim = '';
+              const sessionText = (state.currentSessionTranscript || '').trim();
+              if (sessionText) {
+                const lastSaved = state.speechChunks[state.speechChunks.length - 1] || '';
+                if (sessionText !== lastSaved) {
+                  state.speechChunks.push(sessionText);
+                }
               }
+              state.currentSessionTranscript = '';
+              state.currentTranscript = mergeCleanTranscript(state.speechChunks, '');
+
               try {
                 recognition.start();
               } catch (err) {
@@ -899,7 +948,8 @@
       }
 
       async function toggleRecording() {
-        if (!state.apiKey) {
+        const isStaticHost = window.location.hostname.endsWith('github.io');
+        if (!state.apiKey && isStaticHost) {
           showToast('Nejprve prosím vložte Gemini API klíč v Nastavení.', 'error');
           openSettingsModal();
           return;
@@ -914,6 +964,7 @@
 
       async function startRecording() {
         state.speechChunks = [];
+        state.currentSessionTranscript = '';
         state.currentInterim = '';
         state.currentTranscript = '';
         recordedAudioChunks = [];
@@ -925,7 +976,7 @@
         updateMicUI(true);
         startTimer();
 
-        // 1. Získání mikrofonního streamu ve vysoké kvalitě (potlačení ozvěny, šumu)
+        // 1. Získání mikrofonního streamu pro vizualizaci sinusoidy
         try {
           if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
             const stream = await navigator.mediaDevices.getUserMedia({
@@ -937,37 +988,12 @@
             });
             microphoneStream = stream;
             startWaveformWithStream(stream);
-
-            // Nastavení podporovaného formátu zvuku
-            let mimeType = 'audio/webm';
-            if (window.MediaRecorder) {
-              if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-                mimeType = 'audio/webm;codecs=opus';
-              } else if (MediaRecorder.isTypeSupported('audio/webm')) {
-                mimeType = 'audio/webm';
-              } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
-                mimeType = 'audio/mp4';
-              } else if (MediaRecorder.isTypeSupported('audio/aac')) {
-                mimeType = 'audio/aac';
-              } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
-                mimeType = 'audio/ogg';
-              }
-            }
-            state.audioMimeType = mimeType;
-
-            mediaRecorder = new MediaRecorder(stream, { mimeType });
-            mediaRecorder.ondataavailable = (e) => {
-              if (e.data && e.data.size > 0) {
-                recordedAudioChunks.push(e.data);
-              }
-            };
-            mediaRecorder.start(200);
           }
         } catch (err) {
-          console.warn('MediaRecorder audio capture fallback:', err);
+          console.warn('Audio visualization stream warning:', err);
         }
 
-        // 2. Současně spustíme SpeechRecognition pro okamžitý živý náhled na obrazovce
+        // 2. Spustíme SpeechRecognition pro živý přepis
         try {
           if (recognition) {
             recognition.lang = state.speechLang || 'cs-CZ';
@@ -988,24 +1014,18 @@
           if (recognition) recognition.stop();
         } catch (e) {}
 
-        if (state.currentInterim && state.currentInterim.trim()) {
-          state.speechChunks.push(state.currentInterim.trim());
-          state.currentInterim = '';
-        }
-
-        const transcript = state.speechChunks.join(' ').trim();
+        const transcript = (state.currentTranscript || state.currentSessionTranscript || state.speechChunks.join(' ')).replace(/\s+/g, ' ').trim();
         state.currentTranscript = transcript;
+        if (transcript) {
+          rawTranscriptText.textContent = transcript;
+        }
 
         if (microphoneStream) {
           microphoneStream.getTracks().forEach((track) => track.stop());
           microphoneStream = null;
         }
 
-        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-          try { mediaRecorder.stop(); } catch (e) {}
-        }
-
-        // Bleskové okamžité odeslání do Gemini AI Flash (žádné čekání, blesková odezva pod 1s!)
+        // Bleskové okamžité odeslání do Gemini AI Flash
         if (transcript) {
           processWithGemini(null, transcript);
         } else {
@@ -1173,7 +1193,10 @@
         });
       }
 
-      // --- GEMINI FLASH MULTIMODAL AUDIO-PEN PROCESSING ---
+      // --- GEMINI AI PROCESSING (SERVER PROXY + DIRECT FALLBACK PRO GITHUB PAGES) ---
+      let activeProcessController = null;
+      let latestProcessRequestId = 0;
+
       async function processWithGemini(audioBlob, fallbackText) {
         if (typeof audioBlob === 'string') {
           fallbackText = audioBlob;
@@ -1181,160 +1204,197 @@
         }
 
         const apiKey = (state.apiKey || '').trim();
-        if (!apiKey) {
-          showToast('Chybí Gemini API klíč. Zadejte jej v nastavení (ozubené kolo).', 'error');
-          openSettingsModal();
+        const textInput = (fallbackText || state.currentTranscript || '').trim();
+        if (!textInput) {
+          setAiLoading(false);
+          showToast('Není zadán žádný text k přepisu.', 'error');
           return;
         }
+
+        // Pokud předchozí požadavek ještě běží (např. při rychlém překliknutí režimu), zrušíme ho
+        if (activeProcessController) {
+          try {
+            activeProcessController.abort();
+          } catch (e) {}
+        }
+        const currentController = new AbortController();
+        activeProcessController = currentController;
+        const requestId = ++latestProcessRequestId;
+        const requestedMode = state.mode;
 
         setAiLoading(true);
 
         // System prompt instructions based on selected mode
         let systemInstruction = '';
         if (state.mode === 'verbatim') {
-          systemInstruction = `Jsi špičkový AI editor a stylista inspirovaný AudioPen. Tvým úkolem je vzít mluvený diktát (který vznikl přepisem řeči a může obsahovat přeřeky, fonetické nepřesnosti z mikrofonu a chybějící interpunkci) a přetvořit ho v dokonale uhlazený, plynulý, kultivovaný a čtivý text v češtině.
-
-Klíčové zásady pro bleskový a dokonalý výsledek:
-1. OPRAV FONETICKÉ NEPŘESNOSTI A ANGLICKÁ SLOVA:
-- Rozpoznávač řeči v mobilu občas foneticky zkomolí cizí či odborná slova. Oprav fonetické přepisy na správné výrazy a termíny (např. 'audio pen' -> AudioPen, 'geminy' -> Gemini, 'gist' -> Gist, 'git hap' -> GitHub, 'pajton' -> Python, AI, API, prompt, workflow, deadline, update apod.).
-2. RADIKÁLNĚ VYČISTI PŘEŘEKY A BALAST:
-- Vymaž veškerá parazitní slova a slovní vatu: "prostě", "jakože", "vlastně", "no tak", "hele", "jakoby", "takže", "ééé", "hm".
-- Odstraň falešné začátky vět, zakoktání, zbytečné opakování myšlenek a opravy sebe sama za chodu ("chtěl jsem... no spíš bych..."). Ponechej pouze výslednou zamýšlenou myšlenku.
-3. KULTIVOVANÝ STYL A PLYNULOST (ELEVATION):
-- Doplň správnou interpunkci (tečky, čárky, otazníky), sjednoť velká a malá písmena.
-- Propoj rozdrobené mluvené věty do elegantních a logických souvětí.
-- Text musí působit dojmem, jako by ho napsal vzdělaný autor, který si myšlenku předem promyslel a precizně zformuloval.
-- Pokud je diktát delší (např. 1 až 4 minuty), čleň text do logických odstavců pro maximální přehlednost.
-4. ZACHOVEJ SMYSL A FAKTA:
-- Důsledně zachovej původní význam, myšlenky, fakta, jména, termíny a čísla. Nevymýšlej si nové nesouvisející informace.
-5. VÝHRADNĚ ČISTÝ TEXT:
-- Vrať POUZE hotový výsledný text. Bez jakýchkoliv úvodních vět, bez komentářů a bez uvozovek kolem textu.`;
+          systemInstruction = `Jsi špičkový český korektor pro hlasové diktování. Uživatel ti posílá surový přepis hlasu z mikrofonu.
+Tvůj úkol:
+1. ZACHOVEJ PŮVODNÍ DÉLKU A SLOVA: Text NIKDY nezkracuj, neshrnuj a nepřeformulovávej do jiných vět! Ponech text takový, jaký je, stejně dlouhý, se stejným významem a přirozeným tónem mluvčího.
+2. DOPLŇ VEŠKEROU INTERPUNKCI A OPRAV VELKÁ PÍSMENA: Doplň tečky na konce vět, čárky v souvětích, otazníky a vykřičníky. Pokud mluvčí vyslovil slovo "čárka", "tečka", "otazník" nebo "vykřičník" na místě, kam patří znaménko (např. "byl touto aplikací upraven čárka aby byly"), smaž toto pomocné slovo a napiš pouze dané interpunkční znaménko (", aby byly"). Oprav nesprávná velká písmena uprostřed vět ("Tento" -> "tento", "Původní" -> "původní", "Zde" -> "zde", "Text" -> "text", "Chybu" -> "chybu", "Vyskočila" -> "vyskočila") a nastav velká písmena na začátku vět.
+3. OPRAV ZKOMOLENÁ CIZÍ/ANGLICKÁ SLOVA A PŘEKLEPY MIKROFONU PODLE KONTEXTU: Hlasový rozpoznávač často foneticky zkomolí slova. Podle smyslu věty je oprav na správný výraz: např. "eJay", "ejAj", "ej aj", "Ai" -> "AI"; "na pronty" -> "na prompty"; "vy cíle mi aby" / "vym cílem je aby" -> "mým cílem je, aby"; "geminy", "džeminy" -> "Gemini"; "audio pen" -> "AudioPen"; "git hap" -> "GitHub"; "gist" -> "Gist"; "emailu" / "emailů" -> "e-mailu" / "e-mailů"; "sms" -> "SMS".
+4. BEZCHYBNÁ ČESKÁ GRAMATIKA A PRAVOPIS: Oprav pravopisné chyby, překlepy, i/y (např. "čárky") a diakritiku podle pravidel českého pravopisu.
+5. Vrať VÝHRADNĚ opravený text bez jakýchkoliv komentářů či uvozovek.`;
         } else if (state.mode === 'summary') {
-          systemInstruction = `Jsi špičkový analytický editor inspirovaný AudioPen. Tvým úkolem je vzít mluvený diktát, opravit fonetické nepřesnosti a odborné termíny, vymazat veškerá parazitní slova i přeřeky a vytvořit hutné, krystalicky jasné a výstižné shrnutí v češtině (1 až 3 odstavce podle délky). Zachyť klíčové poselství, podstatné souvislosti a nejdůležitější závěry. Vrať VÝHRADNĚ výsledný text bez úvodů či komentářů.`;
+          systemInstruction = `Jsi špičkový český korektor a editor pro hlasové diktování. Uživatel ti posílá surový přepis hlasu z mikrofonu a chce z něj vytvořit STRUČNÉ SHRNUTÍ.
+Tvůj úkol:
+1. NEJPRVE OPRAV VŠECHNY CHYBY MIKROFONU, DIAKRITIKU A INTERPUNKCI (stejně pečlivě jako u korektury):
+   - Doplň veškerou interpunkci (tečky na konce vět, čárky v souvětích a seznamech, otazníky, vykřičníky). Pokud mluvčí vyslovil pomocné slovo "čárka", "tečka", "otazník", smaž toto pomocné slovo a nahraď ho daným znaménkem.
+   - Oprav nesprávná velká písmena uprostřed vět a nastav velká písmena na začátku vět.
+   - Oprav zkomolená cizí/anglická slova a přeslechy mikrofonu podle kontextu: např. "eJay", "ejAj", "ej aj", "Ai" -> "AI"; "sova jako Ai" -> "slova jako AI"; "na pronty" -> "na prompty"; "k bytu už konečně fungovalo" -> "kdyby to už konečně fungovalo"; "vy cíle mi aby" / "vym cílem je aby" -> "mým cílem je, aby"; "geminy", "džeminy" -> "Gemini"; "audio pen" -> "AudioPen"; "git hap" -> "GitHub"; "gist" -> "Gist"; "emaily" / "emailu" / "emailů" -> "e-maily" / "e-mailu" / "e-mailů"; "sms" -> "SMS".
+   - Zajisti bezchybnou českou gramatiku, pravopis (i/y) a diakritiku (háčky, čárky).
+2. VYTVOŘ STRUČNÉ SHRNUTÍ:
+   - Z opraveného sdělení vytvoř stručné, jasné a čtivé shrnutí hlavních myšlenek a pointy v češtině (1 až 2 krátké odstavce podle délky diktátu).
+   - Zachovej přirozený tón a osobu mluvčího (pokud mluvčí mluví v 1. osobě za sebe, piš shrnutí přirozeně v 1. osobě, nepoužívej strojený úřednický styl).
+3. Vrať VÝHRADNĚ výsledný text shrnutí bez jakýchkoliv komentářů, nadpisů či uvozovek.`;
         } else if (state.mode === 'bullets') {
-          systemInstruction = `Jsi špičkový organizační editor inspirovaný AudioPen. Tvým úkolem je vzít mluvený diktát, opravit fonetické nepřesnosti a odborné termíny, odstranit veškerý balast i přeřeky a uspořádat myšlenky do logického a přehledného seznamu odrážek v češtině (klíčová fakta, úkoly, kroky nebo poznámky). Vrať VÝHRADNĚ seznam odrážek bez úvodů či komentářů.`;
+          systemInstruction = `Jsi špičkový český korektor a editor pro hlasové diktování. Uživatel ti posílá surový přepis hlasu z mikrofonu a chce z něj vytvořit přehledné BODY A ÚKOLY.
+Tvůj úkol:
+1. NEJPRVE OPRAV VŠECHNY CHYBY MIKROFONU, DIAKRITIKU A INTERPUNKCI (stejně pečlivě jako u korektury):
+   - Doplň veškerou interpunkci (čárky v souvětích a seznamech, tečky, otazníky, vykřičníky). Pokud mluvčí vyslovil pomocné slovo "čárka", "tečka", "otazník", smaž toto pomocné slovo a nahraď ho daným znaménkem.
+   - Oprav nesprávná velká písmena uprostřed vět a nastav velká písmena na začátku každého bodu.
+   - Oprav zkomolená cizí/anglická slova a přeslechy mikrofonu podle kontextu: např. "eJay", "ejAj", "ej aj", "Ai" -> "AI"; "sova jako Ai" -> "slova jako AI"; "na pronty" -> "na prompty"; "k bytu už konečně fungovalo" -> "kdyby to už konečně fungovalo"; "vy cíle mi aby" / "vym cílem je aby" -> "mým cílem je, aby"; "geminy", "džeminy" -> "Gemini"; "audio pen" -> "AudioPen"; "git hap" -> "GitHub"; "gist" -> "Gist"; "emaily" / "emailu" / "emailů" -> "e-maily" / "e-mailu" / "e-mailů"; "sms" -> "SMS".
+   - Zajisti bezchybnou českou gramatiku, pravopis (i/y) a diakritiku (háčky, čárky).
+2. VYTVOŘ PŘEHLEDNÉ BODY A ÚKOLY:
+   - Uspořádej myšlenky, požadavky a úkoly z diktátu do přehledného odrážkového seznamu v češtině.
+   - Každý bod napiš na samostatný řádek začínající znakem "• " a ukonči jej správným interpunkčním znaménkem.
+   - Zachovej přirozený a věcný styl mluvčího bez vaty.
+3. Vrať VÝHRADNĚ odrážkový seznam bez jakýchkoliv úvodních komentářů či uvozovek.`;
         }
 
-        const textInput = (fallbackText || state.currentTranscript || '').trim();
-        let requestContents = null;
-
-        // Pokud máme nadiktovaný text (z živého poslechu mikrofonu), posíláme text přímo pro bleskovou odezvu (pod 1 sekundu)
-        if (textInput) {
-          requestContents = [
-            {
-              role: 'user',
-              parts: [{ text: textInput }]
-            }
-          ];
-        } else if (audioBlob && audioBlob.size > 1000) {
-          try {
-            const base64Audio = await blobToBase64(audioBlob);
-            let mime = (audioBlob.type || 'audio/webm').split(';')[0].trim();
-            if (!mime) mime = 'audio/webm';
-            requestContents = [
-              {
-                role: 'user',
-                parts: [
-                  { text: 'Přepiš a uhlaď tento hlasový diktát podle systémových instrukcí:' },
-                  { inlineData: { mimeType: mime, data: base64Audio } }
-                ]
-              }
-            ];
-          } catch (e) {
-            console.warn('Audio fallback failed:', e);
-          }
-        }
-
-        if (!requestContents) {
-          setAiLoading(false);
-          showToast('Není zadán žádný text k přepisu.', 'error');
-          return;
-        }
-
-        // Bleskové modely seřazené podle rychlosti odezvy a dostupnosti
-        const modelsToTry = [
-          'gemini-3.5-flash-lite',
-          'gemini-3.5-flash',
-          'gemini-flash-latest',
-          'gemini-3.8-flash',
-          'gemini-2.5-flash'
-        ];
         let resultText = '';
+        let usedModel = '';
         let lastError = null;
+        let shouldUseDirectBrowserFallback = false;
 
-        for (const model of modelsToTry) {
-          try {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 9000); // Max 9s na pokus - nikdy se nezasekne na 1.5 minuty!
+        // 1. Nejprve zkusíme serverový endpoint /api/gemini/process (funguje v AI Studio preview bez blokace proxy)
+        try {
+          const serverTimeout = setTimeout(() => currentController.abort(), 35000);
+          const serverRes = await fetch('/api/gemini/process', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: currentController.signal,
+            body: JSON.stringify({
+              mode: requestedMode,
+              text: textInput,
+              apiKey: apiKey,
+              systemInstruction: systemInstruction
+            })
+          });
+          clearTimeout(serverTimeout);
 
-            const response = await fetch(url, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'x-goog-api-key': apiKey
-              },
-              signal: controller.signal,
-              body: JSON.stringify({
-                systemInstruction: {
-                  parts: [{ text: systemInstruction }]
-                },
-                contents: requestContents,
-                generationConfig: {
-                  temperature: 0.3,
-                  maxOutputTokens: 3000,
-                }
-              })
-            });
-            clearTimeout(timeoutId);
+          if (requestId !== latestProcessRequestId) return;
 
-            if (!response.ok) {
-              let errMsg = `HTTP ${response.status}`;
-              try {
-                const errJson = await response.json();
-                if (errJson && errJson.error && errJson.error.message) {
-                  errMsg = errJson.error.message;
-                }
-              } catch (e) {
-                try { errMsg = await response.text(); } catch (e2) {}
-              }
-              console.warn(`Model ${model} vrátil kód ${response.status}:`, errMsg);
-              lastError = new Error(errMsg);
-              continue;
+          if (serverRes.ok) {
+            const serverData = await serverRes.json();
+            if (serverData && serverData.text) {
+              resultText = serverData.text.trim();
+              usedModel = serverData.model || 'gemini-3.1-flash-lite';
             }
-
-            const data = await response.json();
-            if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
-              resultText = data.candidates[0].content.parts.map(p => p.text).join('').trim();
-              const indicator = document.getElementById('modelIndicator');
-              if (indicator) indicator.textContent = model;
-              break;
+          } else if (serverRes.status === 404 || serverRes.status === 405) {
+            // Na statickém hostingu (např. GitHub Pages) serverový endpoint neexistuje -> povolíme přímé volání
+            shouldUseDirectBrowserFallback = true;
+          } else {
+            const errJson = await serverRes.json().catch(() => ({}));
+            if (errJson && errJson.error) {
+              lastError = new Error(errJson.error);
+            } else {
+              lastError = new Error(`HTTP ${serverRes.status}`);
             }
-          } catch (err) {
-            console.warn(`Volání modelu ${model} selhalo:`, err);
-            lastError = err;
+          }
+        } catch (serverErr) {
+          if (requestId !== latestProcessRequestId) return;
+          const isStaticHost = window.location.hostname.endsWith('github.io') || window.location.protocol === 'file:';
+          if (isStaticHost) {
+            shouldUseDirectBrowserFallback = true;
+          } else {
+            lastError = serverErr;
           }
         }
 
+        // 2. Fallback: přímé volání VÝHRADNĚ pro statický hosting (GitHub Pages), kde neběží AI Studio proxy
+        if (!resultText && shouldUseDirectBrowserFallback && apiKey) {
+          const modelsToTry = [
+            'gemini-3.1-flash-lite',
+            'gemini-3.5-flash-lite',
+            'gemini-3.5-flash',
+            'gemini-3.8-flash'
+          ];
+
+          for (const model of modelsToTry) {
+            if (requestId !== latestProcessRequestId) return;
+            try {
+              const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 14000);
+
+              const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                signal: controller.signal,
+                body: JSON.stringify({
+                  systemInstruction: { parts: [{ text: systemInstruction }] },
+                  contents: [{ role: 'user', parts: [{ text: textInput }] }],
+                  generationConfig: {
+                    temperature: 0.1,
+                    maxOutputTokens: 4000
+                  }
+                })
+              });
+              clearTimeout(timeoutId);
+
+              if (!response.ok) {
+                let errMsg = `HTTP ${response.status}`;
+                try {
+                  const errJson = await response.json();
+                  if (errJson && errJson.error && errJson.error.message) {
+                    errMsg = errJson.error.message;
+                  }
+                } catch (e) {}
+                lastError = new Error(errMsg);
+                continue;
+              }
+
+              const data = await response.json();
+              const extracted = data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('').trim();
+              if (extracted) {
+                resultText = extracted;
+                usedModel = model;
+                break;
+              }
+            } catch (err) {
+              lastError = err;
+            }
+          }
+        }
+
+        if (requestId !== latestProcessRequestId) return;
         setAiLoading(false);
 
         if (!resultText) {
-          // Záchranná síť: Pokud AI selhala (např. chyba klíče nebo výpadek sítě),
-          // vložíme do výstupu původní nadiktovaný text z živého náhledu, aby uživatel o nic nepřišel!
-          if (textInput) {
+          if (textInput && !outputTextArea.value) {
             outputTextArea.value = textInput;
             outputMetadata.textContent = '· Vloženo z diktování (přímý přepis)';
             updateStats();
+          }
+          if (shouldUseDirectBrowserFallback && !apiKey) {
+            showToast('Chybí Gemini API klíč. Zadejte jej v nastavení (ozubené kolo).', 'error');
+            openSettingsModal();
+            return;
           }
           const detail = lastError ? ' (' + (lastError.message || lastError) + ')' : '';
           showToast('Chyba Gemini API' + detail + '. Původní text byl zachován v editoru.', 'error');
           return;
         }
 
+        if (usedModel) {
+          const indicator = document.getElementById('modelIndicator');
+          if (indicator) indicator.textContent = usedModel;
+        }
+
         outputTextArea.value = resultText;
-        outputMetadata.textContent = `· Bleskově upraveno AI (${getModeLabel(state.mode)})`;
+        outputMetadata.textContent = `· Bleskově upraveno AI (${getModeLabel(requestedMode)})`;
         updateStats();
-        showToast('Zpracováno za méně než sekundu! Text je připraven.', 'success');
+        showToast('Hotovo! Text je opraven a připraven.', 'success');
 
         // Automatické uložení a sync do Gistu
         if (state.autoSync && state.gistId && state.githubPat) {
@@ -1354,7 +1414,7 @@ Klíčové zásady pro bleskový a dokonalý výsledek:
       }
 
       function getModeLabel(mode) {
-        if (mode === 'verbatim') return 'Uhlazený text (AudioPen)';
+        if (mode === 'verbatim') return 'Původní znění (Diakritika & čárky)';
         if (mode === 'summary') return 'Stručné shrnutí';
         if (mode === 'bullets') return 'Body & Úkoly';
         return mode;
@@ -1817,9 +1877,10 @@ Klíčové zásady pro bleskový a dokonalý výsledek:
             btn.classList.add('active', 'metallic-orange-btn', 'text-white', 'shadow-md');
             btn.classList.remove('text-stone-600');
 
-            // If there's already raw transcript and user toggles mode, optionally reprocess
-            if (state.currentTranscript) {
-              processWithGemini(null, state.currentTranscript);
+            // Pokud už máme nadiktovaný text (v živém náhledu nebo v editoru) a zrovna nenahráváme, okamžitě jej zpracujeme ve zvoleném režimu
+            const sourceText = (state.currentTranscript || outputTextArea.value || '').trim();
+            if (sourceText && !state.isRecording) {
+              processWithGemini(null, sourceText);
             }
           });
         });
@@ -1871,21 +1932,23 @@ Klíčové zásady pro bleskový a dokonalý výsledek:
           showToast('Nyní můžete text přímo upravit v poli.');
         });
 
-        // History filters (bottom)
-        historySearchInput.addEventListener('input', renderHistory);
-        historyFilterMode.addEventListener('change', renderHistory);
+        // History filters (bottom, if present)
+        if (historySearchInput) historySearchInput.addEventListener('input', renderHistory);
+        if (historyFilterMode) historyFilterMode.addEventListener('change', renderHistory);
 
-        btnClearAllHistory.addEventListener('click', () => {
-          if (state.notes.length === 0) return;
-          if (confirm('Opravdu chcete smazat celou historii záznamů?')) {
-            state.notes = [];
-            saveNotesLocal();
-            showToast('Celá historie byla vymazána.');
-            if (state.autoSync && state.githubPat && state.gistId) {
-              pushNotesToGist();
+        if (btnClearAllHistory) {
+          btnClearAllHistory.addEventListener('click', () => {
+            if (state.notes.length === 0) return;
+            if (confirm('Opravdu chcete smazat celou historii záznamů?')) {
+              state.notes = [];
+              saveNotesLocal();
+              showToast('Celá historie byla vymazána.');
+              if (state.autoSync && state.githubPat && state.gistId) {
+                pushNotesToGist();
+              }
             }
-          }
-        });
+          });
+        }
 
         // Sync button
         btnManualSync.addEventListener('click', () => {
