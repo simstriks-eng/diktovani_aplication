@@ -213,8 +213,8 @@
       </div>
       <div class="grid grid-cols-3 gap-2 w-full max-w-md p-1.5 bg-white rounded-2xl border border-[#EBE4D8] shadow-xs">
         <button id="modeVerbatim" class="mode-btn active px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 flex flex-col items-center justify-center gap-1 metallic-orange-btn text-white shadow-md cursor-pointer" data-mode="verbatim">
-          <span>Uhlazený text</span>
-          <span class="text-[10px] font-medium opacity-95 text-amber-100">AudioPen Styl ✨</span>
+          <span>Původní znění</span>
+          <span class="text-[10px] font-medium opacity-95 text-amber-100">Diakritika &amp; čárky ✨</span>
         </button>
         <button id="modeSummary" class="mode-btn px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 flex flex-col items-center justify-center gap-1 text-stone-600 hover:text-stone-900 hover:bg-orange-50/50 cursor-pointer" data-mode="summary">
           <span>Stručné shrnutí</span>
@@ -355,39 +355,6 @@
       </div>
     </section>
 
-    <!-- History Panel Section (Accessible also at bottom) -->
-    <section class="w-full max-w-3xl mx-auto flex flex-col gap-4 mt-2">
-      <div class="flex items-center justify-between border-b border-[#EBE4D8] pb-3">
-        <div class="flex items-center gap-2">
-          <h2 class="text-sm font-bold text-stone-900">Historie záznamů</h2>
-          <span id="historyCount" class="text-xs text-orange-700 font-mono font-bold">(0)</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <button id="btnClearAllHistory" class="text-xs text-stone-400 hover:text-rose-600 transition-colors cursor-pointer">
-            Smazat vše
-          </button>
-        </div>
-      </div>
-
-      <!-- Search & Filter bar for history -->
-      <div class="flex items-center gap-2">
-        <div class="relative flex-1">
-          <input id="historySearchInput" type="text" placeholder="Hledat v historii..." class="w-full bg-white border border-[#EBE4D8] focus:border-orange-500 rounded-xl px-3.5 py-2 text-xs text-stone-800 placeholder:text-stone-400 focus:outline-none shadow-xs" />
-        </div>
-        <select id="historyFilterMode" class="bg-white border border-[#EBE4D8] focus:border-orange-500 rounded-xl px-3 py-2 text-xs text-stone-700 focus:outline-none shadow-xs">
-          <option value="all">Všechny režimy</option>
-          <option value="verbatim">Uhlazený text (AudioPen)</option>
-          <option value="summary">Stručné shrnutí</option>
-          <option value="bullets">Body &amp; Úkoly</option>
-        </select>
-      </div>
-
-      <!-- History List Container -->
-      <div id="historyListContainer" class="flex flex-col gap-2.5">
-        <!-- Rendered dynamically -->
-      </div>
-    </section>
-
   </main>
 
   <!-- Modal: History Drawer (Opened immediately from top header button - no scrolling needed!) -->
@@ -419,7 +386,7 @@
         </div>
         <select id="historyModalFilterMode" class="bg-[#FAF7F2] border border-[#EBE4D8] focus:border-orange-500 rounded-xl px-3 py-2 text-xs text-stone-800 focus:outline-none cursor-pointer">
           <option value="all">Všechny režimy</option>
-          <option value="verbatim">Uhlazený text (AudioPen)</option>
+          <option value="verbatim">Původní znění (Diakritika &amp; čárky)</option>
           <option value="summary">Stručné shrnutí</option>
           <option value="bullets">Body &amp; Úkoly</option>
         </select>
