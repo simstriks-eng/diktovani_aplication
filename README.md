@@ -1,0 +1,2 @@
+# diktovani_aplication
+diktovani
