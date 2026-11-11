@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="cs" class="dark">
+<html lang="cs" class="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
@@ -9,7 +9,7 @@
   <meta property="og:description" content="Chytrý diktafon s okamžitým zpracováním hlasu přes Gemini Flash, vyčištěním přeřeků ve stylu AudioPen a synchronizací přes GitHub Gist pro mobil i PC." />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="theme-color" content="#090d16" />
+  <meta name="theme-color" content="#FAF7F2" />
 
   <!-- Google Fonts: Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -29,32 +29,30 @@
           },
           colors: {
             brand: {
-              50: '#eef2ff',
-              100: '#e0e7ff',
-              400: '#818cf8',
-              500: '#6366f1',
-              600: '#4f46e5',
-              700: '#4338ca',
-            },
-            record: {
-              400: '#fb7185',
-              500: '#f43f5e',
-              600: '#e11d48',
+              50: '#fff7ed',
+              100: '#ffedd5',
+              400: '#fb923c',
+              500: '#f97316',
+              600: '#ea580c',
+              700: '#c2410c',
             }
           },
           keyframes: {
-            pulseGlow: {
-              '0%, 100%': { transform: 'scale(1)', boxShadow: '0 0 0 0 rgba(244, 63, 94, 0.7)' },
-              '50%': { transform: 'scale(1.05)', boxShadow: '0 0 0 20px rgba(244, 63, 94, 0)' },
+            recordSway: {
+              '0%': { transform: 'translateY(0px) rotate(0deg) scale(1.02)' },
+              '25%': { transform: 'translateY(-3.5px) rotate(-1.8deg) scale(1.04)' },
+              '50%': { transform: 'translateY(0px) rotate(0deg) scale(1.02)' },
+              '75%': { transform: 'translateY(3.5px) rotate(1.8deg) scale(1.04)' },
+              '100%': { transform: 'translateY(0px) rotate(0deg) scale(1.02)' },
             },
-            ripple: {
-              '0%': { transform: 'scale(0.8)', opacity: '1' },
-              '100%': { transform: 'scale(2.2)', opacity: '0' },
+            glowPulse: {
+              '0%, 100%': { boxShadow: '0 0 25px rgba(249, 115, 22, 0.4)' },
+              '50%': { boxShadow: '0 0 50px rgba(249, 115, 22, 0.75)' },
             }
           },
           animation: {
-            'pulse-glow': 'pulseGlow 2s infinite cubic-bezier(0.4, 0, 0.6, 1)',
-            'ripple': 'ripple 1.8s infinite ease-out',
+            'record-sway': 'recordSway 2.4s ease-in-out infinite',
+            'glow-pulse': 'glowPulse 2s ease-in-out infinite',
           }
         }
       }
@@ -65,11 +63,54 @@
       display: none !important;
     }
     body {
-      background-color: #080c14;
-      color: #f1f5f9;
+      background-color: #FAF7F2;
+      color: #1C1917;
       font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
       -webkit-tap-highlight-color: transparent;
       touch-action: manipulation;
+    }
+    /* AudioPen Metallic Orange gradient button */
+    .metallic-orange-btn {
+      background: linear-gradient(135deg, #FB923C 0%, #EA580C 50%, #C2410C 100%) !important;
+      box-shadow: 0 4px 14px -1px rgba(234, 88, 12, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.45) !important;
+      border: 1px solid rgba(194, 65, 12, 0.6) !important;
+      color: #FFFFFF !important;
+    }
+    .metallic-orange-btn:hover {
+      background: linear-gradient(135deg, #FDBA74 0%, #F97316 45%, #C2410C 100%) !important;
+      box-shadow: 0 6px 20px -2px rgba(234, 88, 12, 0.45), inset 0 1px 1.5px rgba(255, 255, 255, 0.6) !important;
+    }
+    /* Metallic Mic Button (AudioPen Signature Disc) */
+    .metallic-mic-disc {
+      background: radial-gradient(circle at 35% 30%, #FF9E4A 0%, #EA580C 55%, #9A3412 100%) !important;
+      box-shadow: 0 14px 38px -6px rgba(234, 88, 12, 0.45), 0 4px 12px rgba(0, 0, 0, 0.08), inset 0 2px 3px rgba(255, 255, 255, 0.6), inset 0 -3px 6px rgba(124, 45, 18, 0.5) !important;
+      border: 3.5px solid #FFF3E6 !important;
+    }
+    .metallic-mic-disc:hover {
+      background: radial-gradient(circle at 35% 30%, #FFA85C 0%, #F97316 55%, #9A3412 100%) !important;
+      box-shadow: 0 18px 45px -6px rgba(234, 88, 12, 0.55), 0 4px 14px rgba(0, 0, 0, 0.1), inset 0 2px 3px rgba(255, 255, 255, 0.7) !important;
+    }
+    .metallic-mic-inner {
+      background: radial-gradient(circle at 38% 35%, #C2410C 0%, #7C2D12 100%) !important;
+      box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(255, 255, 255, 0.35) !important;
+    }
+    /* Gentle sway & floating animation when recording (sway back and forth) */
+    @keyframes micSwayFloat {
+      0%, 100% {
+        transform: translateY(0px) rotate(0deg);
+      }
+      25% {
+        transform: translateY(-5px) rotate(-1.5deg);
+      }
+      50% {
+        transform: translateY(1.5px) rotate(0deg);
+      }
+      75% {
+        transform: translateY(-4px) rotate(1.5deg);
+      }
+    }
+    .animate-mic-sway {
+      animation: micSwayFloat 2.4s ease-in-out infinite !important;
     }
     /* Custom subtle scrollbar */
     ::-webkit-scrollbar {
@@ -77,27 +118,27 @@
       height: 6px;
     }
     ::-webkit-scrollbar-track {
-      background: rgba(15, 23, 42, 0.6);
+      background: #F5EFE6;
     }
     ::-webkit-scrollbar-thumb {
-      background: #334155;
+      background: #D8CEBE;
       border-radius: 9999px;
     }
     ::-webkit-scrollbar-thumb:hover {
-      background: #475569;
+      background: #BFB19E;
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col bg-[#080c14] text-slate-100 selection:bg-indigo-500/30 selection:text-indigo-200">
+<body class="min-h-screen flex flex-col bg-[#FAF7F2] text-stone-900 selection:bg-orange-500/25 selection:text-orange-950">
 
-  <!-- Top Bar Contract -->
-  <header class="sticky top-0 z-30 border-b border-slate-800/80 bg-[#080c14]/90 backdrop-blur-md px-4 sm:px-6 py-3.5 transition-all">
-    <div class="max-w-5xl mx-auto flex items-center justify-between gap-4">
+  <!-- Top Bar Contract with AudioPen Metallic Styling & Top History Button -->
+  <header class="sticky top-0 z-30 border-b border-[#EBE4D8] bg-[#FAF7F2]/95 backdrop-blur-md px-4 sm:px-6 py-3 transition-all shadow-xs">
+    <div class="max-w-5xl mx-auto flex items-center justify-between gap-3 sm:gap-4">
       <!-- Zone 1: Brand Wordmark -->
-      <div class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-rose-500 p-0.5 shadow-md shadow-indigo-500/20 flex items-center justify-center">
-          <div class="w-full h-full bg-[#080c14] rounded-[10px] flex items-center justify-center">
-            <svg class="w-4 h-4 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <div class="flex items-center gap-2.5 sm:gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 p-0.5 shadow-md shadow-orange-500/25 flex items-center justify-center">
+          <div class="w-full h-full bg-white rounded-[10px] flex items-center justify-center">
+            <svg class="w-4 h-4 text-orange-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
               <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
               <line x1="12" x2="12" y1="19" y2="22"/>
@@ -105,25 +146,36 @@
           </div>
         </div>
         <div>
-          <span class="text-base font-bold tracking-tight text-white whitespace-nowrap block leading-tight">Hlasové Pero</span>
-          <span class="text-[11px] text-slate-400 tracking-wide font-medium">Audio Pen &amp; Gist Sync</span>
+          <span class="text-base font-extrabold tracking-tight text-stone-900 whitespace-nowrap block leading-tight">Hlasové Pero</span>
+          <span class="text-[11px] text-orange-700 font-semibold tracking-wide">AudioPen &amp; Gist</span>
         </div>
       </div>
 
-      <!-- Zone 2: Status / Sync status indicator -->
-      <div class="hidden sm:flex items-center gap-3 text-xs text-slate-400 font-medium">
-        <span id="modelIndicator" class="text-slate-300">gemini-3.8-flash</span>
-        <span class="text-slate-600">·</span>
-        <span id="gistStatusText" class="text-slate-400 flex items-center gap-1.5">
-          <span id="gistStatusDot" class="w-2 h-2 rounded-full bg-slate-600"></span>
-          <span id="gistStatusLabel">Gist nepřipojen</span>
-        </span>
+      <!-- Zone 2: TOP HISTORY BUTTON (Direct access without scrolling!) -->
+      <div class="flex items-center gap-2">
+        <button id="btnOpenHistoryTop" title="Zobrazit historii záznamů bez scrollování" class="min-h-[38px] px-3 sm:px-4 py-1.5 rounded-xl bg-orange-100 hover:bg-orange-200 text-orange-950 border border-orange-300 font-bold transition-all flex items-center gap-2 text-xs shadow-xs active:scale-95 cursor-pointer">
+          <svg class="w-4 h-4 text-orange-700" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 8v4l3 3"/>
+            <circle cx="12" cy="12" r="9"/>
+          </svg>
+          <span class="hidden xs:inline">Historie</span>
+          <span id="historyTopBadge" class="px-2 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-600 text-white font-mono text-[11px] font-bold shadow-xs">0</span>
+        </button>
+
+        <div class="hidden md:flex items-center gap-2 text-xs text-stone-500 font-medium ml-2">
+          <span id="modelIndicator" class="text-stone-700 font-semibold">gemini-2.5-flash</span>
+          <span class="text-stone-300">·</span>
+          <span id="gistStatusText" class="text-stone-600 flex items-center gap-1.5">
+            <span id="gistStatusDot" class="w-2 h-2 rounded-full bg-stone-400"></span>
+            <span id="gistStatusLabel">Gist nepřipojen</span>
+          </span>
+        </div>
       </div>
 
-      <!-- Zone 3: Actions (Sync, History Toggle, Settings, Export) -->
+      <!-- Zone 3: Actions (Sync, Settings, Export) -->
       <div class="flex items-center gap-1.5 sm:gap-2">
-        <button id="btnManualSync" title="Synchronizovat s GitHub Gist" class="min-h-[40px] px-2.5 py-1.5 rounded-lg text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/70 transition-colors flex items-center gap-1.5 text-xs font-medium">
-          <svg id="syncIconSvg" class="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button id="btnManualSync" title="Synchronizovat s GitHub Gist" class="min-h-[38px] px-2.5 py-1.5 rounded-xl text-stone-700 hover:text-stone-900 bg-white hover:bg-stone-50 border border-[#EBE4D8] transition-colors flex items-center gap-1.5 text-xs font-medium shadow-xs cursor-pointer">
+          <svg id="syncIconSvg" class="w-4 h-4 text-orange-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
             <path d="M3 3v5h5"/>
             <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
@@ -132,8 +184,8 @@
           <span class="hidden md:inline">Sync Gist</span>
         </button>
 
-        <button id="btnOpenExport" title="Exportovat kód pro GitHub Pages" class="min-h-[40px] px-2.5 py-1.5 rounded-lg text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/70 transition-colors flex items-center gap-1.5 text-xs font-medium">
-          <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button id="btnOpenExport" title="Exportovat kód pro GitHub Pages" class="min-h-[38px] px-2.5 py-1.5 rounded-xl text-stone-700 hover:text-stone-900 bg-white hover:bg-stone-50 border border-[#EBE4D8] transition-colors flex items-center gap-1.5 text-xs font-medium shadow-xs cursor-pointer">
+          <svg class="w-4 h-4 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
             <polyline points="7 10 12 15 17 10"/>
             <line x1="12" y1="15" x2="12" y2="3"/>
@@ -141,8 +193,8 @@
           <span class="hidden md:inline">GitHub Pages</span>
         </button>
 
-        <button id="btnOpenSettings" title="Nastavení (API klíč, GitHub PAT, Gist)" class="min-h-[40px] min-w-[40px] rounded-lg text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/70 transition-colors flex items-center justify-center">
-          <svg class="w-4 h-4 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <button id="btnOpenSettings" title="Nastavení (API klíč, GitHub PAT, Gist)" class="min-h-[38px] min-w-[38px] rounded-xl text-stone-700 hover:text-stone-900 bg-white hover:bg-stone-50 border border-[#EBE4D8] transition-colors flex items-center justify-center shadow-xs cursor-pointer">
+          <svg class="w-4 h-4 text-stone-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
             <circle cx="12" cy="12" r="3"/>
           </svg>
@@ -155,20 +207,20 @@
   <main class="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 pb-24 md:pb-12 flex flex-col gap-8">
 
     <!-- Top Mode Switcher Bar -->
-    <section class="flex flex-col items-center gap-3">
-      <div class="text-xs text-slate-400 font-medium uppercase tracking-wider">
+    <section class="flex flex-col items-center gap-2.5">
+      <div class="text-[11px] text-stone-500 font-bold uppercase tracking-wider">
         Zvolte režim zpracování AI
       </div>
-      <div class="grid grid-cols-3 gap-2 w-full max-w-md p-1.5 bg-slate-900/90 rounded-2xl border border-slate-800 shadow-inner">
-        <button id="modeVerbatim" class="mode-btn active px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 flex flex-col items-center justify-center gap-1 bg-indigo-600 text-white shadow-sm" data-mode="verbatim">
+      <div class="grid grid-cols-3 gap-2 w-full max-w-md p-1.5 bg-white rounded-2xl border border-[#EBE4D8] shadow-xs">
+        <button id="modeVerbatim" class="mode-btn active px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 flex flex-col items-center justify-center gap-1 metallic-orange-btn text-white shadow-md cursor-pointer" data-mode="verbatim">
           <span>Uhlazený text</span>
-          <span class="text-[10px] font-normal opacity-90 text-indigo-100">AudioPen Styl ✨</span>
+          <span class="text-[10px] font-medium opacity-95 text-amber-100">AudioPen Styl ✨</span>
         </button>
-        <button id="modeSummary" class="mode-btn px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50" data-mode="summary">
+        <button id="modeSummary" class="mode-btn px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 flex flex-col items-center justify-center gap-1 text-stone-600 hover:text-stone-900 hover:bg-orange-50/50 cursor-pointer" data-mode="summary">
           <span>Stručné shrnutí</span>
           <span class="text-[10px] font-normal opacity-70">Zkrácení &amp; pointa</span>
         </button>
-        <button id="modeBullets" class="mode-btn px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50" data-mode="bullets">
+        <button id="modeBullets" class="mode-btn px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 flex flex-col items-center justify-center gap-1 text-stone-600 hover:text-stone-900 hover:bg-orange-50/50 cursor-pointer" data-mode="bullets">
           <span>Body &amp; Úkoly</span>
           <span class="text-[10px] font-normal opacity-70">Odrážkový přehled</span>
         </button>
@@ -177,55 +229,51 @@
 
     <!-- Center Dictation & Mic Section -->
     <section class="flex flex-col items-center justify-center relative py-4 sm:py-6">
-      <!-- Ambient Backlight -->
-      <div id="ambientGlow" class="absolute w-64 h-64 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none transition-all duration-500"></div>
+      <!-- Ambient Metallic Warm Glow -->
+      <div id="ambientGlow" class="absolute w-72 h-72 rounded-full bg-orange-400/10 blur-3xl pointer-events-none transition-all duration-700"></div>
 
-      <!-- Recording Ripple Circles (Visible when recording) -->
-      <div id="recordingRipples" class="absolute hidden pointer-events-none">
-        <div class="w-36 h-36 rounded-full border-2 border-rose-500/40 animate-ripple"></div>
-        <div class="w-36 h-36 rounded-full border-2 border-rose-500/20 animate-ripple" style="animation-delay: 0.6s;"></div>
-      </div>
-
-      <!-- Big Central Mic Button -->
+      <!-- Big Central Mic Button (AudioPen Metallic Disc) -->
       <div class="relative z-10 flex flex-col items-center">
-        <button id="btnMic" class="relative group w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-b from-slate-800 to-slate-900 border-2 border-slate-700/80 hover:border-indigo-500/70 shadow-2xl shadow-black/80 flex items-center justify-center transition-all duration-300 active:scale-95 focus:outline-none focus:ring-4 focus:ring-indigo-500/30">
-          <!-- Mic Inner Icon / Stop Square -->
-          <div id="micInnerIcon" class="w-16 h-16 rounded-full bg-indigo-600/20 group-hover:bg-indigo-600/30 flex items-center justify-center transition-colors">
-            <svg id="svgMic" class="w-8 h-8 text-indigo-400 transition-transform group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <button id="btnMic" class="relative group w-32 h-32 sm:w-36 sm:h-36 rounded-full metallic-mic-disc flex items-center justify-center transition-all duration-300 active:scale-95 focus:outline-none cursor-pointer">
+          <!-- Mic Inner Icon / Sine Wave Canvas -->
+          <div id="micInnerIcon" class="w-20 h-20 rounded-full metallic-mic-inner flex items-center justify-center transition-all overflow-hidden relative">
+            <svg id="svgMic" class="w-9 h-9 text-white transition-transform group-hover:scale-110 drop-shadow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
               <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
               <line x1="12" x2="12" y1="19" y2="22"/>
             </svg>
-            <div id="svgStop" class="hidden w-6 h-6 rounded-md bg-rose-500 shadow-md"></div>
+            <!-- Animated Sinusoid Canvas (displayed during recording instead of mic) -->
+            <canvas id="sineWaveCanvas" width="76" height="48" class="hidden absolute inset-0 m-auto"></canvas>
           </div>
         </button>
 
         <!-- Timer & Recording Status -->
         <div class="mt-4 flex flex-col items-center gap-1.5">
-          <div id="recordingTimer" class="font-mono text-sm tracking-wider text-slate-400 tabular-nums">00:00</div>
-          <p id="micStatusText" class="text-sm font-medium text-slate-300 text-center">
+          <div id="recordingTimer" class="font-mono text-xs tracking-wider text-orange-950 font-bold tabular-nums bg-orange-100/90 border border-orange-200 px-3 py-0.5 rounded-full shadow-xs">00:00</div>
+          <p id="micStatusText" class="text-sm font-semibold text-stone-800 text-center">
             Klepněte pro zahájení nahrávání
           </p>
-          <p class="text-xs text-slate-400 text-center max-w-sm">
-            Mluvte přirozeně klidně několik minut. AI automaticky vyčistí přeřeky, vycpávky a opraví chyby mikrofonu.
+          <p class="text-xs text-stone-500 text-center max-w-sm">
+            Mluvte přirozeně klidně několik minut. AI automaticky vyčistí přeřeky a zachytí kontext i cizí slova.
           </p>
         </div>
       </div>
 
-      <!-- Live Audio Waveform Canvas (optional reactive feedback) -->
+      <!-- Live Audio Waveform Canvas (optional bottom frequency visualizer) -->
       <canvas id="waveformCanvas" class="w-64 h-8 mt-3 rounded-lg opacity-80" width="256" height="32"></canvas>
     </section>
 
     <!-- Raw Transcript Collapsible / Preview -->
     <section id="rawTranscriptSection" class="hidden w-full max-w-3xl mx-auto">
-      <div class="p-3.5 bg-slate-900/60 rounded-xl border border-slate-800 text-xs text-slate-400 flex items-start gap-2.5">
-        <span class="font-semibold text-slate-300 uppercase tracking-wider text-[10px] shrink-0 mt-0.5">Surový záznam:</span>
-        <div id="rawTranscriptText" class="flex-1 font-mono text-slate-300 leading-relaxed italic">
+      <div class="p-3.5 bg-white rounded-xl border border-[#EBE4D8] text-xs text-stone-700 flex items-start gap-2.5 shadow-xs">
+        <span class="font-bold text-orange-700 uppercase tracking-wider text-[10px] shrink-0 mt-0.5">Živý náhled:</span>
+        <div id="rawTranscriptText" class="flex-1 font-mono text-stone-800 leading-relaxed italic">
           Zatím žádný text...
         </div>
-        <button id="btnManualProcess" title="Znovu zpracovat přes Gemini" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium shrink-0 ml-2">
-          Zpracovat AI →
-        </button>
+        <div class="flex items-center gap-1.5 text-[11px] text-orange-600 font-bold shrink-0 ml-2">
+          <span class="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></span>
+          <span>Auto AI Gemini</span>
+        </div>
       </div>
     </section>
 
@@ -233,20 +281,20 @@
     <section class="w-full max-w-3xl mx-auto flex flex-col gap-3">
       <div class="flex items-center justify-between px-1">
         <div class="flex items-center gap-2">
-          <span class="text-sm font-bold text-slate-200">Výsledek (AudioPen AI)</span>
-          <span id="outputMetadata" class="text-xs text-slate-500 font-medium">· Připraveno</span>
+          <span class="text-sm font-bold text-stone-900">Výsledek (AudioPen AI)</span>
+          <span id="outputMetadata" class="text-xs text-orange-700 font-semibold">· Připraveno</span>
         </div>
         <div class="flex items-center gap-2">
-          <button id="btnTTS" title="Přečíst nahlas" class="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1 px-2 py-1 rounded-md bg-slate-800/60 hover:bg-slate-700/60 border border-slate-700/50 transition-colors">
-            <svg class="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button id="btnTTS" title="Přečíst nahlas" class="text-xs text-stone-700 hover:text-stone-900 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white hover:bg-stone-50 border border-[#EBE4D8] transition-colors cursor-pointer shadow-xs">
+            <svg class="w-3.5 h-3.5 text-orange-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
               <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
               <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
             </svg>
             <span class="hidden sm:inline">Přečíst</span>
           </button>
-          <button id="btnToggleEdit" title="Přepnout úpravy" class="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1 px-2 py-1 rounded-md bg-slate-800/60 hover:bg-slate-700/60 border border-slate-700/50 transition-colors">
-            <svg class="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <button id="btnToggleEdit" title="Přepnout úpravy" class="text-xs text-stone-700 hover:text-stone-900 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white hover:bg-stone-50 border border-[#EBE4D8] transition-colors cursor-pointer shadow-xs">
+            <svg class="w-3.5 h-3.5 text-stone-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
             </svg>
             <span id="btnToggleEditLabel" class="hidden sm:inline">Upravit</span>
@@ -255,27 +303,27 @@
       </div>
 
       <!-- Main Result Display Box -->
-      <div class="relative rounded-2xl bg-slate-900/90 border border-slate-800/90 shadow-xl overflow-hidden focus-within:border-indigo-500/60 transition-colors">
+      <div class="relative rounded-2xl bg-white border border-[#EBE4D8] shadow-md shadow-orange-950/5 overflow-hidden focus-within:border-orange-500 transition-colors">
         <!-- AI Loading Overlay / Spinner -->
-        <div id="aiLoadingOverlay" style="display: none;" class="absolute inset-0 bg-[#080c14]/85 backdrop-blur-sm z-20 flex flex-col items-center justify-center gap-3 hidden transition-opacity">
-          <div class="w-8 h-8 rounded-full border-2 border-indigo-500/30 border-t-indigo-500 animate-spin"></div>
-          <span class="text-xs font-semibold text-indigo-300 animate-pulse">AudioPen AI upravuje a uhlazuje diktát...</span>
+        <div id="aiLoadingOverlay" style="display: none;" class="absolute inset-0 bg-white/90 backdrop-blur-sm z-20 flex flex-col items-center justify-center gap-3 hidden transition-opacity">
+          <div class="w-9 h-9 rounded-full border-2 border-orange-200 border-t-orange-600 animate-spin"></div>
+          <span class="text-xs font-bold text-orange-800 animate-pulse">AudioPen AI upravuje a uhlazuje diktát...</span>
         </div>
 
         <!-- Editable Area / Preview Area -->
-        <textarea id="outputTextArea" rows="7" placeholder="Zde se ihned po domluvení objeví uhlazený, plynulý text zbavený přeřeků a chyb..." class="w-full p-4 sm:p-5 bg-transparent text-slate-100 placeholder:text-slate-600 text-sm sm:text-base leading-relaxed resize-none focus:outline-none"></textarea>
+        <textarea id="outputTextArea" rows="7" placeholder="Zde se ihned po domluvení objeví uhlazený, plynulý text zbavený přeřeků a chyb..." class="w-full p-4 sm:p-5 bg-transparent text-stone-900 placeholder:text-stone-400 text-sm sm:text-base leading-relaxed resize-none focus:outline-none"></textarea>
 
         <!-- Bottom Action Bar inside the box -->
-        <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-slate-950/80 border-t border-slate-800/80">
-          <div class="flex items-center gap-2 text-xs text-slate-400">
+        <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-[#FAF7F2] border-t border-[#EBE4D8]">
+          <div class="flex items-center gap-2 text-xs text-stone-500 font-medium">
             <span id="statsWords">0 slov</span>
-            <span class="text-slate-600">·</span>
+            <span class="text-stone-300">·</span>
             <span id="statsChars">0 znaků</span>
           </div>
 
           <div class="flex items-center gap-2">
             <!-- Delete Button -->
-            <button id="btnClear" title="Vymazat výsledek" class="min-h-[38px] px-3 py-1.5 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 text-xs font-medium transition-colors flex items-center gap-1.5">
+            <button id="btnClear" title="Vymazat výsledek" class="min-h-[38px] px-3 py-1.5 rounded-xl text-stone-500 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer">
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M3 6h18"/>
                 <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
@@ -285,8 +333,8 @@
             </button>
 
             <!-- Save to History & Gist Button -->
-            <button id="btnSave" title="Uložit do historie a synchronizovat s Gistem" class="min-h-[38px] px-3.5 py-1.5 rounded-xl text-slate-200 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium transition-colors flex items-center gap-1.5 shadow-sm">
-              <svg class="w-3.5 h-3.5 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <button id="btnSave" title="Uložit do historie a synchronizovat s Gistem" class="min-h-[38px] px-3.5 py-1.5 rounded-xl text-stone-700 hover:text-stone-900 bg-white hover:bg-stone-50 border border-[#EBE4D8] text-xs font-semibold transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer">
+              <svg class="w-3.5 h-3.5 text-orange-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
                 <polyline points="17 21 17 13 7 13 7 21"/>
                 <polyline points="7 3 7 8 15 8"/>
@@ -294,8 +342,8 @@
               <span>Uložit &amp; Gist</span>
             </button>
 
-            <!-- Copy Button (Primary CTA) -->
-            <button id="btnCopy" class="min-h-[38px] px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-semibold transition-all shadow-md shadow-indigo-600/20 active:scale-95 flex items-center gap-1.5">
+            <!-- Copy Button (Primary CTA in Metallic Orange) -->
+            <button id="btnCopy" class="min-h-[38px] px-5 py-1.5 rounded-xl metallic-orange-btn text-white text-xs sm:text-sm font-bold transition-all shadow-md active:scale-95 flex items-center gap-1.5 cursor-pointer">
               <svg id="copyIconSvg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
                 <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
@@ -307,15 +355,15 @@
       </div>
     </section>
 
-    <!-- History Panel Section -->
+    <!-- History Panel Section (Accessible also at bottom) -->
     <section class="w-full max-w-3xl mx-auto flex flex-col gap-4 mt-2">
-      <div class="flex items-center justify-between border-b border-slate-800/80 pb-3">
+      <div class="flex items-center justify-between border-b border-[#EBE4D8] pb-3">
         <div class="flex items-center gap-2">
-          <h2 class="text-sm font-bold text-slate-200">Historie záznamů</h2>
-          <span id="historyCount" class="text-xs text-slate-500 font-mono">(0)</span>
+          <h2 class="text-sm font-bold text-stone-900">Historie záznamů</h2>
+          <span id="historyCount" class="text-xs text-orange-700 font-mono font-bold">(0)</span>
         </div>
         <div class="flex items-center gap-2">
-          <button id="btnClearAllHistory" class="text-xs text-slate-500 hover:text-rose-400 transition-colors">
+          <button id="btnClearAllHistory" class="text-xs text-stone-400 hover:text-rose-600 transition-colors cursor-pointer">
             Smazat vše
           </button>
         </div>
@@ -324,9 +372,9 @@
       <!-- Search & Filter bar for history -->
       <div class="flex items-center gap-2">
         <div class="relative flex-1">
-          <input id="historySearchInput" type="text" placeholder="Hledat v historii..." class="w-full bg-slate-900/60 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-slate-700" />
+          <input id="historySearchInput" type="text" placeholder="Hledat v historii..." class="w-full bg-white border border-[#EBE4D8] focus:border-orange-500 rounded-xl px-3.5 py-2 text-xs text-stone-800 placeholder:text-stone-400 focus:outline-none shadow-xs" />
         </div>
-        <select id="historyFilterMode" class="bg-slate-900/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-slate-700">
+        <select id="historyFilterMode" class="bg-white border border-[#EBE4D8] focus:border-orange-500 rounded-xl px-3 py-2 text-xs text-stone-700 focus:outline-none shadow-xs">
           <option value="all">Všechny režimy</option>
           <option value="verbatim">Uhlazený text (AudioPen)</option>
           <option value="summary">Stručné shrnutí</option>
@@ -342,18 +390,65 @@
 
   </main>
 
-  <!-- Modal: Settings -->
-  <div id="modalSettings" style="display: none;" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-        <div class="flex items-center gap-2">
-          <svg class="w-5 h-5 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
-            <circle cx="12" cy="12" r="3"/>
-          </svg>
-          <h3 class="text-base font-bold text-white">Nastavení integrací</h3>
+  <!-- Modal: History Drawer (Opened immediately from top header button - no scrolling needed!) -->
+  <div id="modalHistory" style="display: none;" class="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 hidden">
+    <div class="w-full max-w-2xl bg-white border border-[#EBE4D8] rounded-2xl p-5 sm:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.18)] flex flex-col gap-4 max-h-[88vh] overflow-hidden">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between border-b border-[#EBE4D8] pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center text-orange-600 shadow-xs">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M12 8v4l3 3"/>
+              <circle cx="12" cy="12" r="9"/>
+            </svg>
+          </div>
+          <div>
+            <h3 class="text-base font-bold text-stone-900">Historie diktátů</h3>
+            <span class="text-xs text-stone-500">Všechny vaše dřívější záznamy na jednom místě</span>
+          </div>
         </div>
-        <button id="btnCloseSettings" class="min-h-[36px] min-w-[36px] rounded-lg text-slate-400 hover:text-white flex items-center justify-center">
+        <button id="btnCloseHistoryModal" class="min-h-[36px] min-w-[36px] rounded-xl text-stone-400 hover:text-stone-900 hover:bg-stone-100 flex items-center justify-center transition-colors text-base font-bold cursor-pointer">
+          ✕
+        </button>
+      </div>
+
+      <!-- Search & Filter bar for history in Modal -->
+      <div class="flex items-center gap-2">
+        <div class="relative flex-1">
+          <input id="historyModalSearchInput" type="text" placeholder="Hledat v historii..." class="w-full bg-[#FAF7F2] border border-[#EBE4D8] focus:border-orange-500 focus:bg-white rounded-xl px-3.5 py-2 text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none transition-colors" />
+        </div>
+        <select id="historyModalFilterMode" class="bg-[#FAF7F2] border border-[#EBE4D8] focus:border-orange-500 rounded-xl px-3 py-2 text-xs text-stone-800 focus:outline-none cursor-pointer">
+          <option value="all">Všechny režimy</option>
+          <option value="verbatim">Uhlazený text (AudioPen)</option>
+          <option value="summary">Stručné shrnutí</option>
+          <option value="bullets">Body &amp; Úkoly</option>
+        </select>
+        <button id="btnClearAllHistoryModal" class="px-2.5 py-2 text-xs text-stone-500 hover:text-rose-600 transition-colors whitespace-nowrap cursor-pointer">
+          Smazat vše
+        </button>
+      </div>
+
+      <!-- Scrollable List Container in Modal -->
+      <div id="historyModalListContainer" class="flex flex-col gap-2.5 overflow-y-auto pr-1 flex-1 max-h-[60vh]">
+        <!-- Dynamically rendered -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Settings -->
+  <div id="modalSettings" style="display: none;" class="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-md flex items-center justify-center p-4 hidden">
+    <div class="w-full max-w-md bg-white border border-[#EBE4D8] rounded-2xl p-5 sm:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.18)] flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-[#EBE4D8] pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-orange-50 border border-orange-200 flex items-center justify-center text-orange-600 shadow-xs">
+            <svg class="w-5 h-5 text-orange-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </div>
+          <h3 class="text-base font-bold text-stone-900">Nastavení integrací</h3>
+        </div>
+        <button id="btnCloseSettings" class="min-h-[36px] min-w-[36px] rounded-lg text-stone-400 hover:text-stone-900 hover:bg-stone-100 flex items-center justify-center cursor-pointer transition-colors">
           ✕
         </button>
       </div>
@@ -361,18 +456,18 @@
       <div class="flex flex-col gap-4 text-xs">
         <!-- Gemini API Key -->
         <div class="flex flex-col gap-1.5">
-          <label class="font-semibold text-slate-300">Gemini API Key</label>
-          <input id="inputGeminiApiKey" type="password" placeholder="Vložte váš Gemini API klíč..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-200 font-mono focus:border-indigo-500 focus:outline-none" />
-          <p class="text-[11px] text-slate-500">
-            Ukládá se pouze lokálně v prohlížeči (localStorage). Používá se pro volání modelů <code class="text-indigo-300">gemini-3.8-flash / gemini-3.5-flash</code>.
+          <label class="font-semibold text-stone-800">Gemini API Key</label>
+          <input id="inputGeminiApiKey" type="password" placeholder="Vložte váš Gemini API klíč..." class="w-full bg-[#FAF7F2] border border-[#EBE4D8] focus:border-orange-500 focus:bg-white rounded-xl px-3 py-2.5 text-xs text-stone-900 font-mono focus:outline-none transition-colors" />
+          <p class="text-[11px] text-stone-500">
+            Ukládá se pouze lokálně v prohlížeči (localStorage). Používá se pro volání modelů <code class="text-orange-700 font-semibold">gemini-2.5-flash / gemini-3.8-flash</code>.
           </p>
         </div>
 
         <!-- GitHub PAT -->
         <div class="flex flex-col gap-1.5">
-          <label class="font-semibold text-slate-300">GitHub Personal Access Token (PAT)</label>
-          <input id="inputGithubPat" type="password" placeholder="ghp_... (vyžaduje oprávnění 'gist')" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-200 font-mono focus:border-indigo-500 focus:outline-none" />
-          <p class="text-[11px] text-slate-500">
+          <label class="font-semibold text-stone-800">GitHub Personal Access Token (PAT)</label>
+          <input id="inputGithubPat" type="password" placeholder="ghp_... (vyžaduje oprávnění 'gist')" class="w-full bg-[#FAF7F2] border border-[#EBE4D8] focus:border-orange-500 focus:bg-white rounded-xl px-3 py-2.5 text-xs text-stone-900 font-mono focus:outline-none transition-colors" />
+          <p class="text-[11px] text-stone-500">
             Token z GitHubu pro čtení a zápis Gistů (Classic token s rozsahem <code>gist</code> nebo Fine-grained token).
           </p>
         </div>
@@ -380,27 +475,27 @@
         <!-- Gist ID -->
         <div class="flex flex-col gap-1.5">
           <div class="flex items-center justify-between">
-            <label class="font-semibold text-slate-300">GitHub Gist ID</label>
-            <button id="btnAutoCreateGist" type="button" class="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium">
+            <label class="font-semibold text-stone-800">GitHub Gist ID</label>
+            <button id="btnAutoCreateGist" type="button" class="text-[11px] text-orange-600 hover:text-orange-700 font-semibold cursor-pointer">
               + Vytvořit nový Gist automaticky
             </button>
           </div>
-          <input id="inputGistId" type="text" placeholder="např. 7a8b9c0d1e2f3a4b..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-200 font-mono focus:border-indigo-500 focus:outline-none" />
+          <input id="inputGistId" type="text" placeholder="např. 7a8b9c0d1e2f3a4b..." class="w-full bg-[#FAF7F2] border border-[#EBE4D8] focus:border-orange-500 focus:bg-white rounded-xl px-3 py-2.5 text-xs text-stone-900 font-mono focus:outline-none transition-colors" />
           <div class="flex items-center justify-between pt-0.5">
-            <button id="btnTestGist" type="button" class="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1">
+            <button id="btnTestGist" type="button" class="text-[11px] text-orange-600 hover:text-orange-700 font-semibold flex items-center gap-1 cursor-pointer">
               <span>⚡ Otestovat spojení s Gistem</span>
             </button>
-            <span id="testGistStatus" class="text-[11px] text-slate-400 font-medium"></span>
+            <span id="testGistStatus" class="text-[11px] text-stone-500 font-medium"></span>
           </div>
-          <p class="text-[11px] text-slate-500">
-            ID existujícího tajného Gistu, ve kterém se ukládá soubor <code>audiopen_notes.json</code> pro synchronizaci mezi mobilem a PC.
+          <p class="text-[11px] text-stone-500">
+            ID existujícího tajného Gistu pro synchronizaci mezi mobilem a PC.
           </p>
         </div>
 
         <!-- Speech Language -->
         <div class="flex flex-col gap-1.5">
-          <label class="font-semibold text-slate-300">Jazyk diktování</label>
-          <select id="selectSpeechLang" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none">
+          <label class="font-semibold text-stone-800">Jazyk diktování</label>
+          <select id="selectSpeechLang" class="w-full bg-[#FAF7F2] border border-[#EBE4D8] focus:border-orange-500 rounded-xl px-3 py-2 text-xs text-stone-800 focus:outline-none cursor-pointer">
             <option value="cs-CZ" selected>Čeština (cs-CZ)</option>
             <option value="sk-SK">Slovenština (sk-SK)</option>
             <option value="en-US">Angličtina (en-US)</option>
@@ -410,19 +505,19 @@
 
         <!-- Auto Sync Toggle -->
         <div class="flex items-center justify-between pt-1">
-          <span class="text-slate-300 font-medium">Automaticky ukládat do Gistu</span>
+          <span class="text-stone-800 font-medium">Automaticky ukládat do Gistu</span>
           <label class="relative inline-flex items-center cursor-pointer">
             <input id="toggleAutoSync" type="checkbox" class="sr-only peer" checked>
-            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+            <div class="w-9 h-5 bg-stone-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-600"></div>
           </label>
         </div>
       </div>
 
-      <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-800 mt-2">
-        <button id="btnCancelSettings" class="px-4 py-2 rounded-xl text-slate-400 hover:text-white text-xs font-medium">
+      <div class="flex items-center justify-end gap-2 pt-3 border-t border-[#EBE4D8] mt-2">
+        <button id="btnCancelSettings" class="px-4 py-2 rounded-xl text-stone-500 hover:text-stone-800 hover:bg-stone-100 text-xs font-semibold cursor-pointer transition-colors">
           Zrušit
         </button>
-        <button id="btnSaveSettings" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md">
+        <button id="btnSaveSettings" class="px-5 py-2.5 rounded-xl metallic-orange-btn text-white text-xs font-bold shadow-md cursor-pointer">
           Uložit nastavení
         </button>
       </div>
@@ -430,63 +525,65 @@
   </div>
 
   <!-- Modal: GitHub Pages Export Instructions -->
-  <div id="modalExport" style="display: none;" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 hidden">
-    <div class="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-        <div class="flex items-center gap-2">
-          <svg class="w-5 h-5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
-          <h3 class="text-base font-bold text-white">Návod: Jak aplikaci spustit na GitHub Pages</h3>
+  <div id="modalExport" style="display: none;" class="fixed inset-0 z-50 bg-stone-900/60 backdrop-blur-md flex items-center justify-center p-4 hidden">
+    <div class="w-full max-w-2xl bg-white border border-[#EBE4D8] rounded-2xl p-5 sm:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.18)] flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-[#EBE4D8] pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 shadow-xs">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          </div>
+          <h3 class="text-base font-bold text-stone-900">Návod: Jak aplikaci spustit na GitHub Pages</h3>
         </div>
-        <button id="btnCloseExport" class="min-h-[36px] min-w-[36px] rounded-lg text-slate-400 hover:text-white flex items-center justify-center">
+        <button id="btnCloseExport" class="min-h-[36px] min-w-[36px] rounded-lg text-stone-400 hover:text-stone-900 hover:bg-stone-100 flex items-center justify-center cursor-pointer transition-colors">
           ✕
         </button>
       </div>
 
-      <div class="flex flex-col gap-3 text-xs text-slate-300">
+      <div class="flex flex-col gap-3 text-xs text-stone-600">
         <p class="leading-relaxed">
-          Celá aplikace je 100% obsažena v jediném souboru <code class="text-indigo-400 font-mono">index.html</code> (Vanilla JS + Tailwind CSS z CDN). Není potřeba žádný Node.js server ani build step!
+          Celá aplikace je 100% obsažena v jediném souboru <code class="text-orange-700 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-200 font-mono font-semibold">index.html</code> (Vanilla JS + Tailwind CSS z CDN). Není potřeba žádný Node.js server ani build step!
         </p>
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 my-2">
-          <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex flex-col gap-1.5">
-            <div class="flex items-center gap-2 font-bold text-indigo-400">
-              <span class="w-5 h-5 rounded-full bg-indigo-500/20 flex items-center justify-center text-[10px]">1</span>
+          <div class="p-3.5 bg-[#FAF7F2] rounded-xl border border-[#EBE4D8] flex flex-col gap-1.5">
+            <div class="flex items-center gap-2 font-bold text-orange-700">
+              <span class="w-5 h-5 rounded-full bg-orange-100 border border-orange-200 flex items-center justify-center text-[11px]">1</span>
               <span>Založit repozitář</span>
             </div>
-            <p class="text-[11px] text-slate-400">
+            <p class="text-[11px] text-stone-500">
               Na GitHub.com klikněte na <strong>New repository</strong> (např. <code>audiopen</code>), nastavte jako Public a vytvořte.
             </p>
           </div>
 
-          <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex flex-col gap-1.5">
-            <div class="flex items-center gap-2 font-bold text-indigo-400">
-              <span class="w-5 h-5 rounded-full bg-indigo-500/20 flex items-center justify-center text-[10px]">2</span>
+          <div class="p-3.5 bg-[#FAF7F2] rounded-xl border border-[#EBE4D8] flex flex-col gap-1.5">
+            <div class="flex items-center gap-2 font-bold text-orange-700">
+              <span class="w-5 h-5 rounded-full bg-orange-100 border border-orange-200 flex items-center justify-center text-[11px]">2</span>
               <span>Vložit index.html</span>
             </div>
-            <p class="text-[11px] text-slate-400">
+            <p class="text-[11px] text-stone-500">
               V repozitáři klikněte na <strong>Add file → Create new file</strong>, pojmenujte jej <code>index.html</code> a vložte zkopírovaný kód.
             </p>
           </div>
 
-          <div class="p-3 bg-slate-950/80 rounded-xl border border-slate-800 flex flex-col gap-1.5">
-            <div class="flex items-center gap-2 font-bold text-indigo-400">
-              <span class="w-5 h-5 rounded-full bg-indigo-500/20 flex items-center justify-center text-[10px]">3</span>
+          <div class="p-3.5 bg-[#FAF7F2] rounded-xl border border-[#EBE4D8] flex flex-col gap-1.5">
+            <div class="flex items-center gap-2 font-bold text-orange-700">
+              <span class="w-5 h-5 rounded-full bg-orange-100 border border-orange-200 flex items-center justify-center text-[11px]">3</span>
               <span>Aktivovat Pages</span>
             </div>
-            <p class="text-[11px] text-slate-400">
+            <p class="text-[11px] text-stone-500">
               Jděte do <strong>Settings → Pages</strong>, pod <em>Build and deployment</em> vyberte větev <strong>main / root</strong> a uložte.
             </p>
           </div>
         </div>
 
         <div class="flex items-center justify-between pt-2">
-          <span class="font-semibold text-slate-200">Kompletní zdrojový kód index.html:</span>
+          <span class="font-semibold text-stone-800">Kompletní zdrojový kód index.html:</span>
           <div class="flex items-center gap-2">
-            <button id="btnDownloadHtml" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 flex items-center gap-1.5">
+            <button id="btnDownloadHtml" class="px-3.5 py-2 rounded-xl bg-white hover:bg-stone-50 text-stone-800 text-xs font-semibold border border-[#EBE4D8] hover:border-orange-400 flex items-center gap-1.5 cursor-pointer shadow-xs transition-colors">
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                 <polyline points="7 10 12 15 17 10"/>
@@ -494,7 +591,7 @@
               </svg>
               <span>Stáhnout index.html</span>
             </button>
-            <button id="btnCopyHtmlSource" class="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md flex items-center gap-1.5">
+            <button id="btnCopyHtmlSource" class="px-4 py-2 rounded-xl metallic-orange-btn text-white text-xs font-bold shadow-md flex items-center gap-1.5 cursor-pointer">
               <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
                 <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
@@ -546,21 +643,22 @@
       let audioContext = null;
       let analyser = null;
       let microphoneStream = null;
+      let mediaRecorder = null;
+      let recordedAudioChunks = [];
+      let currentAudioBlob = null;
       let animationFrameId = null;
 
       // --- DOM ELEMENTS ---
       const btnMic = document.getElementById('btnMic');
       const micInnerIcon = document.getElementById('micInnerIcon');
       const svgMic = document.getElementById('svgMic');
-      const svgStop = document.getElementById('svgStop');
+      const sineWaveCanvas = document.getElementById('sineWaveCanvas');
       const micStatusText = document.getElementById('micStatusText');
       const recordingTimer = document.getElementById('recordingTimer');
-      const recordingRipples = document.getElementById('recordingRipples');
       const ambientGlow = document.getElementById('ambientGlow');
       const waveformCanvas = document.getElementById('waveformCanvas');
       const rawTranscriptSection = document.getElementById('rawTranscriptSection');
       const rawTranscriptText = document.getElementById('rawTranscriptText');
-      const btnManualProcess = document.getElementById('btnManualProcess');
 
       const outputTextArea = document.getElementById('outputTextArea');
       const outputMetadata = document.getElementById('outputMetadata');
@@ -589,6 +687,11 @@
       const btnManualSync = document.getElementById('btnManualSync');
       const syncIconSvg = document.getElementById('syncIconSvg');
 
+      // Top History Button & Badges
+      const btnOpenHistoryTop = document.getElementById('btnOpenHistoryTop');
+      const historyTopBadge = document.getElementById('historyTopBadge');
+
+      // Bottom History
       const historyListContainer = document.getElementById('historyListContainer');
       const historyCount = document.getElementById('historyCount');
       const historySearchInput = document.getElementById('historySearchInput');
@@ -596,6 +699,13 @@
       const btnClearAllHistory = document.getElementById('btnClearAllHistory');
 
       // Modals
+      const modalHistory = document.getElementById('modalHistory');
+      const btnCloseHistoryModal = document.getElementById('btnCloseHistoryModal');
+      const historyModalSearchInput = document.getElementById('historyModalSearchInput');
+      const historyModalFilterMode = document.getElementById('historyModalFilterMode');
+      const btnClearAllHistoryModal = document.getElementById('btnClearAllHistoryModal');
+      const historyModalListContainer = document.getElementById('historyModalListContainer');
+
       const btnOpenSettings = document.getElementById('btnOpenSettings');
       const btnCloseSettings = document.getElementById('btnCloseSettings');
       const btnCancelSettings = document.getElementById('btnCancelSettings');
@@ -616,6 +726,22 @@
       const btnCopyHtmlSource = document.getElementById('btnCopyHtmlSource');
       const btnCopyHtmlSourceLabel = document.getElementById('btnCopyHtmlSourceLabel');
       const btnDownloadHtml = document.getElementById('btnDownloadHtml');
+
+      // Modal helpers for history
+      function openHistoryModal() {
+        if (modalHistory) {
+          modalHistory.style.display = 'flex';
+          modalHistory.classList.remove('hidden');
+          renderHistory();
+        }
+      }
+
+      function closeHistoryModal() {
+        if (modalHistory) {
+          modalHistory.style.display = 'none';
+          modalHistory.classList.add('hidden');
+        }
+      }
 
       // --- INITIALIZATION ---
       function init() {
@@ -702,10 +828,10 @@
       function showToast(message, type = 'info') {
         const container = document.getElementById('toastContainer');
         const toast = document.createElement('div');
-        toast.className = `px-4 py-2.5 rounded-xl text-xs font-semibold shadow-xl border flex items-center gap-2 transform transition-all duration-300 translate-y-2 opacity-0 pointer-events-auto ${
-          type === 'success' ? 'bg-emerald-950/90 border-emerald-700/80 text-emerald-200' :
-          type === 'error' ? 'bg-rose-950/90 border-rose-700/80 text-rose-200' :
-          'bg-slate-900/90 border-slate-700 text-slate-200'
+        toast.className = `px-4 py-2.5 rounded-xl text-xs font-semibold shadow-lg border flex items-center gap-2 transform transition-all duration-300 translate-y-2 opacity-0 pointer-events-auto ${
+          type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-900' :
+          type === 'error' ? 'bg-rose-50 border-rose-200 text-rose-900' :
+          'bg-white border-[#EBE4D8] text-stone-800'
         }`;
 
         let icon = 'ℹ️';
@@ -805,66 +931,87 @@
         }
       }
 
-      function toggleRecording() {
+      async function toggleRecording() {
         if (!state.apiKey) {
           showToast('Nejprve prosím vložte Gemini API klíč v Nastavení.', 'error');
           openSettingsModal();
           return;
         }
 
-        if (!recognition) {
-          setupSpeechRecognition();
-          if (!recognition) {
-            showToast('Rozpoznávání řeči není v tomto prohlížeči podporováno.', 'error');
-            return;
-          }
-        }
-
         if (state.isRecording) {
-          stopRecording();
-          // Po zastavení ihned odeslat text k AI vyčištění a uhlazení
-          const textToProcess = (state.currentTranscript || '').trim();
-          if (textToProcess.length > 0) {
-            processWithGemini(textToProcess);
-          } else {
-            showToast('Nebyl zachycen žádný mluvený text.', 'info');
-          }
+          await stopRecording();
         } else {
-          startRecording();
+          await startRecording();
         }
       }
 
-      function startRecording() {
+      async function startRecording() {
         state.speechChunks = [];
         state.currentInterim = '';
         state.currentTranscript = '';
+        recordedAudioChunks = [];
+        currentAudioBlob = null;
         state.isRecording = true;
 
-        rawTranscriptText.textContent = 'Poslouchám váš hlas... Mluvte přirozeně.';
+        rawTranscriptText.textContent = 'Poslouchám hlas přímo přes mikrofon... Mluvte přirozeně.';
         rawTranscriptSection.classList.remove('hidden');
         updateMicUI(true);
         startTimer();
-        startWaveform();
 
+        // 1. Získání mikrofonního streamu ve vysoké kvalitě (potlačení ozvěny, šumu)
         try {
-          recognition.lang = state.speechLang || 'cs-CZ';
-          recognition.start();
-        } catch (e) {
-          console.warn('Speech start warning, retrying:', e);
-          try {
-            recognition.stop();
-            setTimeout(() => {
-              if (state.isRecording) {
-                try { recognition.start(); } catch (err) {}
+          if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            const stream = await navigator.mediaDevices.getUserMedia({
+              audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true
               }
-            }, 150);
-          } catch (err) {
-            showToast('Nelze spustit mikrofon.', 'error');
+            });
+            microphoneStream = stream;
+            startWaveformWithStream(stream);
+
+            // Nastavení podporovaného formátu zvuku
+            let mimeType = 'audio/webm';
+            if (window.MediaRecorder) {
+              if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                mimeType = 'audio/webm;codecs=opus';
+              } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+                mimeType = 'audio/webm';
+              } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+                mimeType = 'audio/mp4';
+              } else if (MediaRecorder.isTypeSupported('audio/aac')) {
+                mimeType = 'audio/aac';
+              } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
+                mimeType = 'audio/ogg';
+              }
+            }
+            state.audioMimeType = mimeType;
+
+            mediaRecorder = new MediaRecorder(stream, { mimeType });
+            mediaRecorder.ondataavailable = (e) => {
+              if (e.data && e.data.size > 0) {
+                recordedAudioChunks.push(e.data);
+              }
+            };
+            mediaRecorder.start(200);
           }
+        } catch (err) {
+          console.warn('MediaRecorder audio capture fallback:', err);
+        }
+
+        // 2. Současně spustíme SpeechRecognition pro okamžitý živý náhled na obrazovce
+        try {
+          if (recognition) {
+            recognition.lang = state.speechLang || 'cs-CZ';
+            recognition.start();
+          }
+        } catch (e) {
+          console.warn('SpeechRecognition warning:', e);
         }
       }
 
-      function stopRecording() {
+      async function stopRecording() {
         state.isRecording = false;
         updateMicUI(false);
         stopTimer();
@@ -879,36 +1026,116 @@
           state.currentInterim = '';
         }
 
-        const fullFinal = state.speechChunks.join(' ').trim();
-        state.currentTranscript = fullFinal;
-        if (fullFinal) {
-          rawTranscriptText.textContent = fullFinal;
-          rawTranscriptSection.classList.remove('hidden');
+        const fallbackTranscript = state.speechChunks.join(' ').trim();
+        state.currentTranscript = fallbackTranscript;
+
+        let audioBlob = null;
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+          await new Promise((resolve) => {
+            mediaRecorder.onstop = () => resolve();
+            try {
+              mediaRecorder.stop();
+            } catch (e) {
+              resolve();
+            }
+          });
+
+          if (recordedAudioChunks.length > 0) {
+            audioBlob = new Blob(recordedAudioChunks, { type: state.audioMimeType || 'audio/webm' });
+            currentAudioBlob = audioBlob;
+          }
+        }
+
+        if (microphoneStream) {
+          microphoneStream.getTracks().forEach((track) => track.stop());
+          microphoneStream = null;
+        }
+
+        // AUTOMATICKÉ ODESLÁNÍ DO GEMINI AI (BEZ NUTNOSTI KLIKAT NA JAKÉKOLIV TLAČÍTKO!)
+        if ((audioBlob && audioBlob.size > 1000) || fallbackTranscript) {
+          processWithGemini(audioBlob, fallbackTranscript);
+        } else {
+          showToast('Nebyl zaznamenán žádný hlas.', 'info');
+        }
+      }
+
+      let sineAnimationId = null;
+      let sinePhase = 0;
+
+      function startSineWave() {
+        const canvas = document.getElementById('sineWaveCanvas');
+        if (!canvas) return;
+        canvas.classList.remove('hidden');
+        const ctx = canvas.getContext('2d');
+
+        function drawSine() {
+          sineAnimationId = requestAnimationFrame(drawSine);
+          sinePhase += 0.09;
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          let amp = 9;
+          if (analyser) {
+            const data = new Uint8Array(analyser.frequencyBinCount);
+            analyser.getByteFrequencyData(data);
+            const avg = data.reduce((a, b) => a + b, 0) / (data.length || 1);
+            amp = 5 + (avg / 255) * 14;
+          } else {
+            amp = 7 + Math.sin(sinePhase * 0.4) * 4;
+          }
+
+          ctx.beginPath();
+          ctx.lineWidth = 3;
+          ctx.lineCap = 'round';
+          ctx.strokeStyle = '#ffffff';
+          ctx.shadowColor = 'rgba(251, 146, 60, 0.95)';
+          ctx.shadowBlur = 8;
+
+          const midY = canvas.height / 2;
+          for (let x = 0; x < canvas.width; x++) {
+            const y = midY + Math.sin((x / canvas.width) * Math.PI * 4 + sinePhase) * amp;
+            if (x === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+          }
+          ctx.stroke();
+        }
+        drawSine();
+      }
+
+      function stopSineWave() {
+        if (sineAnimationId) {
+          cancelAnimationFrame(sineAnimationId);
+          sineAnimationId = null;
+        }
+        const canvas = document.getElementById('sineWaveCanvas');
+        if (canvas) {
+          canvas.classList.add('hidden');
+          const ctx = canvas.getContext('2d');
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
       }
 
       function updateMicUI(isRec) {
         if (isRec) {
-          btnMic.classList.add('animate-pulse-glow', 'border-rose-500', 'bg-gradient-to-b', 'from-rose-950/80', 'to-slate-900');
-          btnMic.classList.remove('border-slate-700/80');
-          micInnerIcon.classList.remove('bg-indigo-600/20');
-          micInnerIcon.classList.add('bg-rose-500/20');
+          // Kruh se jemně pohybuje tam a zpět (AudioPen styl)
+          btnMic.classList.add('animate-mic-sway', 'scale-105');
+          // Uprostřed běží sinusoida místo mikrofonu
           svgMic.classList.add('hidden');
-          svgStop.classList.remove('hidden');
-          recordingRipples.classList.remove('hidden');
-          ambientGlow.classList.remove('bg-indigo-500/10');
-          ambientGlow.classList.add('bg-rose-500/25');
-          micStatusText.innerHTML = '<span class="text-rose-400 font-semibold">Nahrávám hlas... Klepněte pro stop</span>';
+          startSineWave();
+
+          if (ambientGlow) {
+            ambientGlow.classList.remove('bg-orange-400/10');
+            ambientGlow.classList.add('bg-orange-400/25', 'scale-125');
+          }
+          micStatusText.innerHTML = '<span class="text-orange-600 font-bold tracking-wide">Nahrávám hlas... Klepněte pro stop</span>';
         } else {
-          btnMic.classList.remove('animate-pulse-glow', 'border-rose-500', 'bg-gradient-to-b', 'from-rose-950/80');
-          btnMic.classList.add('border-slate-700/80');
-          micInnerIcon.classList.remove('bg-rose-500/20');
-          micInnerIcon.classList.add('bg-indigo-600/20');
+          btnMic.classList.remove('animate-mic-sway', 'scale-105');
+          stopSineWave();
           svgMic.classList.remove('hidden');
-          svgStop.classList.add('hidden');
-          recordingRipples.classList.add('hidden');
-          ambientGlow.classList.remove('bg-rose-500/25');
-          ambientGlow.classList.add('bg-indigo-500/10');
+
+          if (ambientGlow) {
+            ambientGlow.classList.remove('bg-orange-400/25', 'scale-125');
+            ambientGlow.classList.add('bg-orange-400/10');
+          }
           micStatusText.textContent = 'Klepněte pro zahájení nahrávání';
         }
       }
@@ -931,10 +1158,9 @@
       }
 
       // --- WAVEFORM CANVAS ---
-      function startWaveform() {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
-        navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
-          microphoneStream = stream;
+      function startWaveformWithStream(stream) {
+        try {
+          if (!waveformCanvas) return;
           audioContext = new (window.AudioContext || window.webkitAudioContext)();
           const source = audioContext.createMediaStreamSource(stream);
           analyser = audioContext.createAnalyser();
@@ -961,33 +1187,46 @@
             }
           }
           draw();
-        }).catch(() => {
-          // Fallback static animation if media stream is blocked
-        });
+        } catch (err) {
+          console.warn('Waveform audio visualizer error:', err);
+        }
       }
 
       function stopWaveform() {
         if (animationFrameId) cancelAnimationFrame(animationFrameId);
-        if (microphoneStream) {
-          microphoneStream.getTracks().forEach((track) => track.stop());
-          microphoneStream = null;
-        }
         if (audioContext && audioContext.state !== 'closed') {
-          audioContext.close();
+          try {
+            audioContext.close();
+          } catch (e) {}
           audioContext = null;
         }
-        const canvasCtx = waveformCanvas.getContext('2d');
-        canvasCtx.clearRect(0, 0, waveformCanvas.width, waveformCanvas.height);
+        if (waveformCanvas) {
+          const canvasCtx = waveformCanvas.getContext('2d');
+          canvasCtx.clearRect(0, 0, waveformCanvas.width, waveformCanvas.height);
+        }
       }
 
-      // --- GEMINI FLASH AUDIO-PEN PROCESSING ---
-      async function processWithGemini(inputText) {
-        if (!inputText || !inputText.trim()) {
-          showToast('Není zadán žádný text k přepisu.', 'error');
-          return;
+      function blobToBase64(blob) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const dataUrl = reader.result;
+            const base64 = dataUrl.split(',')[1];
+            resolve(base64);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
+
+      // --- GEMINI FLASH MULTIMODAL AUDIO-PEN PROCESSING ---
+      async function processWithGemini(audioBlob, fallbackText) {
+        if (typeof audioBlob === 'string') {
+          fallbackText = audioBlob;
+          audioBlob = null;
         }
 
-        const apiKey = state.apiKey.trim();
+        const apiKey = (state.apiKey || '').trim();
         if (!apiKey) {
           showToast('Chybí Gemini API klíč. Zadejte jej v nastavení (ozubené kolo).', 'error');
           openSettingsModal();
@@ -996,17 +1235,17 @@
 
         setAiLoading(true);
 
-        // System prompt instructions based on selected mode (AudioPen transformation)
+        // System prompt instructions based on selected mode
         let systemInstruction = '';
         if (state.mode === 'verbatim') {
-          systemInstruction = `Jsi špičkový AI editor inspirovaný AudioPen. Tvým úkolem je vzít surový, neuspořádaný přepis mluveného slova z mobilního mikrofonu a přetvořit ho v dokonale uhlazený, plynulý, kultivovaný a čtivý text v češtině.
+          systemInstruction = `Jsi špičkový AI editor a stylista inspirovaný AudioPen. Tvým úkolem je poslechnout si hlasový záznam diktátu přímo ze zvukové stopy a přetvořit ho v dokonale uhlazený, plynulý, kultivovaný a čtivý text v češtině.
 
-Klíčová pravidla pro zpracování:
-1. OPRAV FONETICKÉ CHYBY A PŘEKLEPY MIKROFONU:
-- Mobilní rozpoznávač řeči v prohlížeči často zkomolí slova (např. zamění podobně znějící slova, vytvoří nesmyslné tvary, vynechá diakritiku, špatně vyskloňuje koncovky).
-- Pochop z kontextu celé promluvy, co mluvčí skutečně říkal, a inteligentně oprav všechny tyto zkomoleniny na správné výrazy.
+Klíčové zásady pro dokonalý výsledek:
+1. PŘÍMÉ POROZUMĚNÍ HLASU (VČETNĚ ANGLICKÝCH A ODBORNÝCH SLOV):
+- Poslouchej přímo audio signál. Přesně zachyť veškerá anglická slova, značky, názvy technologií a odborné termíny (např. AI, AudioPen, Gemini, Gist, GitHub, Python, framework, workflow, prompt, deadline, update apod.). Nepřekládej je chybně ani foneticky nezkomoluj.
+- Ignoruj šum v pozadí, nádechy a okolní ruchy.
 2. RADIKÁLNĚ VYČISTI PŘEŘEKY A BALAST:
-- Vymaž veškerá parazitní slova a výplně: "prostě", "jakože", "vlastně", "no tak", "hele", "jakoby", "takže", "ééé", "hm".
+- Vymaž veškerá parazitní slova a slovní vatu: "prostě", "jakože", "vlastně", "no tak", "hele", "jakoby", "takže", "ééé", "hm".
 - Odstraň falešné začátky vět, zakoktání, zbytečné opakování myšlenek a opravy sebe sama za chodu ("chtěl jsem... no spíš bych..."). Ponechej pouze výslednou zamýšlenou myšlenku.
 3. KULTIVOVANÝ STYL A PLYNULOST (ELEVATION):
 - Propoj rozdrobené mluvené věty do elegantních a logických souvětí.
@@ -1017,38 +1256,78 @@ Klíčová pravidla pro zpracování:
 5. VÝHRADNĚ ČISTÝ TEXT:
 - Vrať POUZE hotový výsledný text. Bez jakýchkoliv úvodních vět, bez komentářů a bez uvozovek kolem textu.`;
         } else if (state.mode === 'summary') {
-          systemInstruction = `Jsi špičkový analytický editor. Tvým úkolem je vzít surový mluvený diktát, opravit veškeré fonetické chyby mikrofonu, vymazat parazitní slova a přeřeky a vytvořit hutné, krystalicky jasné a výstižné shrnutí v češtině (1 až 3 odstavce podle délky). Zachyť klíčové poselství, podstatné souvislosti a nejdůležitější závěry. Vrať VÝHRADNĚ výsledný text bez úvodů či komentářů.`;
+          systemInstruction = `Jsi špičkový analytický editor. Tvým úkolem je poslechnout si hlasový záznam diktátu, přesně porozumět obsahu včetně cizích a odborných slov, vymazat parazitní slova i přeřeky a vytvořit hutné, krystalicky jasné a výstižné shrnutí v češtině (1 až 3 odstavce podle délky). Zachyť klíčové poselství, podstatné souvislosti a nejdůležitější závěry. Vrať VÝHRADNĚ výsledný text bez úvodů či komentářů.`;
         } else if (state.mode === 'bullets') {
-          systemInstruction = `Jsi špičkový organizační editor. Tvým úkolem je vzít surový mluvený diktát, opravit chyby rozpoznávače, odstranit veškerý balast i přeřeky a uspořádat myšlenky do logického a přehledného seznamu odrážek v češtině (klíčová fakta, úkoly, kroky nebo poznámky). Vrať VÝHRADNĚ seznam odrážek bez úvodů či komentářů.`;
+          systemInstruction = `Jsi špičkový organizační editor. Tvým úkolem je poslechnout si hlasový záznam diktátu, přesně porozumět obsahu včetně cizích a odborných slov, odstranit veškerý balast i přeřeky a uspořádat myšlenky do logického a přehledného seznamu odrážek v češtině (klíčová fakta, úkoly, kroky nebo poznámky). Vrať VÝHRADNĚ seznam odrážek bez úvodů či komentářů.`;
         }
 
-        // Modely seřazené od nejchytřejšího pro práci s kontextem (Gemini 3.8 / 3.5 Flash s pokročilým uvažováním)
+        // Sestavení requestu: pokud máme audio, posíláme přímo inlineData
+        let requestContents = null;
+        if (audioBlob && audioBlob.size > 1000) {
+          try {
+            const base64Audio = await blobToBase64(audioBlob);
+            let mime = (audioBlob.type || 'audio/webm').split(';')[0].trim();
+            if (!mime) mime = 'audio/webm';
+
+            requestContents = [
+              {
+                role: 'user',
+                parts: [
+                  { text: 'Poslechni si následující nahrávku mého hlasu a zpracuj ji podle systémových instrukcí do čistého textu:' },
+                  {
+                    inlineData: {
+                      mimeType: mime,
+                      data: base64Audio
+                    }
+                  }
+                ]
+              }
+            ];
+          } catch (e) {
+            console.warn('Audio konverze selhala, použije se textový fallback:', e);
+          }
+        }
+
+        if (!requestContents) {
+          const textInput = (fallbackText || state.currentTranscript || '').trim();
+          if (!textInput) {
+            setAiLoading(false);
+            showToast('Není zadán žádný zvuk ani text k přepisu.', 'error');
+            return;
+          }
+          requestContents = [
+            {
+              role: 'user',
+              parts: [{ text: textInput }]
+            }
+          ];
+        }
+
+        // Modely seřazené od požadovaného a nejrychlejšího Flash
         const modelsToTry = [
+          'gemini-2.5-flash',
           'gemini-3.8-flash',
-          'gemini-3.5-flash',
           'gemini-flash-latest',
-          'gemini-3.5-flash-lite',
-          'gemini-2.5-flash'
+          'gemini-3.5-flash',
+          'gemini-3.1-flash-lite'
         ];
         let resultText = '';
         let lastError = null;
 
         for (const model of modelsToTry) {
           try {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
             const response = await fetch(url, {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              headers: {
+                'Content-Type': 'application/json',
+                'x-goog-api-key': apiKey
+              },
               body: JSON.stringify({
                 systemInstruction: {
                   parts: [{ text: systemInstruction }]
                 },
-                contents: [
-                  {
-                    role: 'user',
-                    parts: [{ text: inputText }]
-                  }
-                ],
+                contents: requestContents,
                 generationConfig: {
                   temperature: 0.35,
                   maxOutputTokens: 4096,
@@ -1057,9 +1336,19 @@ Klíčová pravidla pro zpracování:
             });
 
             if (!response.ok) {
-              const errBody = await response.text();
-              console.warn(`Model ${model} vrátil kód ${response.status}:`, errBody);
-              lastError = new Error(`HTTP ${response.status}`);
+              let errMsg = `HTTP ${response.status}`;
+              try {
+                const errJson = await response.json();
+                if (errJson && errJson.error && errJson.error.message) {
+                  errMsg = errJson.error.message;
+                }
+              } catch (e) {
+                try {
+                  errMsg = await response.text();
+                } catch (e2) {}
+              }
+              console.warn(`Model ${model} vrátil kód ${response.status}:`, errMsg);
+              lastError = new Error(errMsg);
               continue;
             }
 
@@ -1084,11 +1373,11 @@ Klíčová pravidla pro zpracování:
         }
 
         outputTextArea.value = resultText;
-        outputMetadata.textContent = `· Zpracováno (${getModeLabel(state.mode)})`;
+        outputMetadata.textContent = `· Zpracováno přímo z hlasu (${getModeLabel(state.mode)})`;
         updateStats();
-        showToast('Text byl úspěšně vyčištěn a uhlazen!', 'success');
+        showToast('Hlas byl úspěšně zpracován modelem Gemini!', 'success');
 
-        // If autosync is enabled, automatically save & sync to Gist
+        // Automatické uložení a sync do Gistu
         if (state.autoSync && state.gistId && state.githubPat) {
           saveCurrentNote(true);
         }
@@ -1457,8 +1746,8 @@ Klíčová pravidla pro zpracování:
 
       // --- HISTORY RENDERING ---
       function renderHistory() {
-        const searchTerm = historySearchInput.value.toLowerCase().trim();
-        const modeFilter = historyFilterMode.value;
+        const searchTerm = ((historyModalSearchInput && historyModalSearchInput.value) || (historySearchInput && historySearchInput.value) || '').toLowerCase().trim();
+        const modeFilter = ((historyModalFilterMode && historyModalFilterMode.value !== 'all' && historyModalFilterMode.value) || (historyFilterMode && historyFilterMode.value) || 'all');
 
         const filtered = state.notes.filter(n => {
           const matchesSearch = !searchTerm || n.text.toLowerCase().includes(searchTerm);
@@ -1466,18 +1755,14 @@ Klíčová pravidla pro zpracování:
           return matchesSearch && matchesMode;
         });
 
-        historyCount.textContent = `(${filtered.length})`;
+        if (historyCount) historyCount.textContent = `(${filtered.length})`;
+        if (historyTopBadge) historyTopBadge.textContent = state.notes.length;
 
-        if (filtered.length === 0) {
-          historyListContainer.innerHTML = `
-            <div class="py-8 px-4 text-center rounded-2xl bg-slate-900/40 border border-slate-800/60 text-slate-500 text-xs">
-              Zatím nemáte žádné uložené záznamy.
-            </div>
-          `;
-          return;
-        }
-
-        historyListContainer.innerHTML = filtered.map(item => {
+        const htmlContent = filtered.length === 0 ? `
+          <div class="py-8 px-4 text-center rounded-2xl bg-white border border-[#EBE4D8] text-stone-500 text-xs shadow-xs">
+            Zatím nemáte žádné uložené záznamy.
+          </div>
+        ` : filtered.map(item => {
           const date = new Date(item.timestamp);
           const formattedDate = date.toLocaleDateString('cs-CZ', {
             day: 'numeric',
@@ -1487,36 +1772,37 @@ Klíčová pravidla pro zpracování:
           });
           const modeName = getModeLabel(item.mode);
           const words = item.text.trim().split(/\s+/).length;
-
-          // Clean escaped text for HTML display
           const safeText = escapeHtml(item.text);
 
           return `
-            <div class="group p-4 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition-all flex flex-col gap-2.5 shadow-sm">
-              <div class="flex items-center justify-between text-[11px] text-slate-400">
+            <div class="group p-4 rounded-xl bg-white border border-[#EBE4D8] hover:border-orange-400 hover:shadow-md transition-all flex flex-col gap-2.5 shadow-xs">
+              <div class="flex items-center justify-between text-[11px] text-stone-500">
                 <div class="flex items-center gap-2">
-                  <span class="font-semibold text-slate-300">${escapeHtml(formattedDate)}</span>
-                  <span class="text-slate-600">·</span>
-                  <span class="text-indigo-400 font-medium">${escapeHtml(modeName)}</span>
-                  <span class="text-slate-600">·</span>
-                  <span>${words} slov</span>
+                  <span class="font-bold text-stone-900">${escapeHtml(formattedDate)}</span>
+                  <span class="text-stone-300">·</span>
+                  <span class="text-orange-700 bg-orange-50 border border-orange-200 px-2 py-0.5 rounded-md font-semibold">${escapeHtml(modeName)}</span>
+                  <span class="text-stone-300">·</span>
+                  <span class="text-stone-500 font-medium">${words} slov</span>
                 </div>
-                <div class="flex items-center gap-1">
-                  <button onclick="window.appCopyNote('${item.id}')" title="Kopírovat text" class="min-h-[30px] px-2 py-1 rounded-lg text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-700/60 border border-slate-700/50 text-[11px] font-medium transition-colors">
+                <div class="flex items-center gap-1.5">
+                  <button onclick="window.appCopyNote('${item.id}')" title="Kopírovat text" class="min-h-[30px] px-2.5 py-1 rounded-lg text-stone-700 hover:text-white bg-stone-100 hover:bg-orange-600 border border-[#EBE4D8] text-[11px] font-semibold transition-colors cursor-pointer">
                     Kopírovat
                   </button>
-                  <button onclick="window.appLoadNoteToEditor('${item.id}')" title="Načíst do editoru" class="min-h-[30px] px-2 py-1 rounded-lg text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-700/60 border border-slate-700/50 text-[11px] font-medium transition-colors">
+                  <button onclick="window.appLoadNoteToEditor('${item.id}')" title="Načíst do editoru" class="min-h-[30px] px-2.5 py-1 rounded-lg text-stone-700 hover:text-white bg-stone-100 hover:bg-stone-800 border border-[#EBE4D8] text-[11px] font-semibold transition-colors cursor-pointer">
                     Otevřít
                   </button>
-                  <button onclick="window.appDeleteNote('${item.id}')" title="Smazat záznam" class="min-h-[30px] px-2 py-1 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 text-[11px] transition-colors">
+                  <button onclick="window.appDeleteNote('${item.id}')" title="Smazat záznam" class="min-h-[30px] px-2 py-1 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 text-[11px] transition-colors cursor-pointer">
                     ✕
                   </button>
                 </div>
               </div>
-              <p class="text-xs sm:text-sm text-slate-200 leading-relaxed line-clamp-3 whitespace-pre-wrap">${safeText}</p>
+              <p class="text-xs sm:text-sm text-stone-800 leading-relaxed line-clamp-3 whitespace-pre-wrap font-normal">${safeText}</p>
             </div>
           `;
         }).join('');
+
+        if (historyListContainer) historyListContainer.innerHTML = htmlContent;
+        if (historyModalListContainer) historyModalListContainer.innerHTML = htmlContent;
       }
 
       function escapeHtml(str) {
@@ -1544,6 +1830,7 @@ Klíčová pravidla pro zpracování:
           outputTextArea.value = item.text;
           updateStats();
           outputMetadata.textContent = `· Načteno z historie (${getModeLabel(item.mode)})`;
+          closeHistoryModal();
           window.scrollTo({ top: 0, behavior: 'smooth' });
           showToast('Záznam načten do editoru.');
         }
@@ -1560,20 +1847,20 @@ Klíčová pravidla pro zpracování:
 
       // --- EVENT LISTENERS ---
       function attachEventListeners() {
-        // Mode switching
+        // Mode switching in AudioPen metallic orange
         Object.entries(modeButtons).forEach(([m, btn]) => {
           btn.addEventListener('click', () => {
             state.mode = m;
             Object.values(modeButtons).forEach(b => {
-              b.classList.remove('active', 'bg-indigo-600', 'text-white', 'shadow-sm');
-              b.classList.add('text-slate-400');
+              b.classList.remove('active', 'metallic-orange-btn', 'text-white', 'shadow-md');
+              b.classList.add('text-stone-600');
             });
-            btn.classList.add('active', 'bg-indigo-600', 'text-white', 'shadow-sm');
-            btn.classList.remove('text-slate-400');
+            btn.classList.add('active', 'metallic-orange-btn', 'text-white', 'shadow-md');
+            btn.classList.remove('text-stone-600');
 
             // If there's already raw transcript and user toggles mode, optionally reprocess
             if (state.currentTranscript) {
-              processWithGemini(state.currentTranscript);
+              processWithGemini(null, state.currentTranscript);
             }
           });
         });
@@ -1581,12 +1868,37 @@ Klíčová pravidla pro zpracování:
         // Mic Button
         btnMic.addEventListener('click', toggleRecording);
 
-        // Manual process button
-        btnManualProcess.addEventListener('click', () => {
-          if (state.currentTranscript) {
-            processWithGemini(state.currentTranscript);
-          }
-        });
+        // Top History Button & Modal Listeners
+        if (btnOpenHistoryTop) {
+          btnOpenHistoryTop.addEventListener('click', openHistoryModal);
+        }
+        if (btnCloseHistoryModal) {
+          btnCloseHistoryModal.addEventListener('click', closeHistoryModal);
+        }
+        if (modalHistory) {
+          modalHistory.addEventListener('click', (e) => {
+            if (e.target === modalHistory) closeHistoryModal();
+          });
+        }
+        if (historyModalSearchInput) {
+          historyModalSearchInput.addEventListener('input', renderHistory);
+        }
+        if (historyModalFilterMode) {
+          historyModalFilterMode.addEventListener('change', renderHistory);
+        }
+        if (btnClearAllHistoryModal) {
+          btnClearAllHistoryModal.addEventListener('click', () => {
+            if (state.notes.length === 0) return;
+            if (confirm('Opravdu chcete smazat celou historii záznamů?')) {
+              state.notes = [];
+              saveNotesLocal();
+              showToast('Celá historie byla vymazána.');
+              if (state.autoSync && state.githubPat && state.gistId) {
+                pushNotesToGist();
+              }
+            }
+          });
+        }
 
         // Output Text Actions
         outputTextArea.addEventListener('input', updateStats);
@@ -1600,7 +1912,7 @@ Klíčová pravidla pro zpracování:
           showToast('Nyní můžete text přímo upravit v poli.');
         });
 
-        // History filters
+        // History filters (bottom)
         historySearchInput.addEventListener('input', renderHistory);
         historyFilterMode.addEventListener('change', renderHistory);
 
