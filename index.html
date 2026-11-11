@@ -1,0 +1,1297 @@
+<!DOCTYPE html>
+<html lang="cs" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Hlasové Pero AI - Audio Pen &amp; Gist Sync</title>
+  <meta name="description" content="Chytrý diktafon s okamžitým zpracováním hlasu přes Gemini 2.5 Flash, přepisem a synchronizací přes GitHub Gist pro mobil i PC." />
+  <meta property="og:title" content="Hlasové Pero AI - Audio Pen &amp; Gist Sync" />
+  <meta property="og:description" content="Chytrý diktafon s okamžitým zpracováním hlasu přes Gemini 2.5 Flash, přepisem a synchronizací přes GitHub Gist pro mobil i PC." />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="theme-color" content="#080c14" />
+
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#eef2ff',
+              100: '#e0e7ff',
+              400: '#818cf8',
+              500: '#6366f1',
+              600: '#4f46e5',
+              700: '#4338ca',
+            }
+          },
+          keyframes: {
+            pulseGlow: {
+              '0%, 100%': { transform: 'scale(1)', boxShadow: '0 0 0 0 rgba(244, 63, 94, 0.7)' },
+              '50%': { transform: 'scale(1.05)', boxShadow: '0 0 0 20px rgba(244, 63, 94, 0)' },
+            },
+            ripple: {
+              '0%': { transform: 'scale(0.8)', opacity: '1' },
+              '100%': { transform: 'scale(2.2)', opacity: '0' },
+            }
+          },
+          animation: {
+            'pulse-glow': 'pulseGlow 2s infinite cubic-bezier(0.4, 0, 0.6, 1)',
+            'ripple': 'ripple 1.8s infinite ease-out',
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      background-color: #080c14;
+      color: #f1f5f9;
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col bg-[#080c14] text-slate-100 selection:bg-indigo-500/30 selection:text-indigo-200">
+
+  <!-- Horní lišta -->
+  <header class="sticky top-0 z-30 border-b border-slate-800/80 bg-[#080c14]/90 backdrop-blur-md px-4 sm:px-6 py-3.5 transition-all">
+    <div class="max-w-5xl mx-auto flex items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-rose-500 p-0.5 shadow-md shadow-indigo-500/20 flex items-center justify-center">
+          <div class="w-full h-full bg-[#080c14] rounded-[10px] flex items-center justify-center">
+            <svg class="w-4 h-4 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" x2="12" y1="19" y2="22"/>
+            </svg>
+          </div>
+        </div>
+        <div>
+          <span class="text-base font-bold tracking-tight text-white whitespace-nowrap block leading-tight">Hlasové Pero</span>
+          <span class="text-[11px] text-slate-400 tracking-wide font-medium">Audio Pen &amp; Gist Sync</span>
+        </div>
+      </div>
+
+      <div class="hidden sm:flex items-center gap-3 text-xs text-slate-400 font-medium">
+        <span id="modelIndicator" class="text-slate-300">gemini-2.5-flash</span>
+        <span class="text-slate-600">·</span>
+        <span id="gistStatusText" class="text-slate-400 flex items-center gap-1.5">
+          <span id="gistStatusDot" class="w-2 h-2 rounded-full bg-slate-600"></span>
+          <span id="gistStatusLabel">Gist nepřipojen</span>
+        </span>
+      </div>
+
+      <div class="flex items-center gap-1.5 sm:gap-2">
+        <button id="btnManualSync" title="Synchronizovat s GitHub Gist" class="min-h-[40px] px-2.5 py-1.5 rounded-lg text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/70 transition-colors flex items-center gap-1.5 text-xs font-medium">
+          <svg id="syncIconSvg" class="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+            <path d="M3 3v5h5"/>
+            <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+            <path d="M16 21h5v-5"/>
+          </svg>
+          <span class="hidden md:inline">Sync Gist</span>
+        </button>
+
+        <button id="btnOpenExport" title="Exportovat kód pro GitHub Pages" class="min-h-[40px] px-2.5 py-1.5 rounded-lg text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/70 transition-colors flex items-center gap-1.5 text-xs font-medium">
+          <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <span class="hidden md:inline">GitHub Pages</span>
+        </button>
+
+        <button id="btnOpenSettings" title="Nastavení (API klíč, GitHub PAT, Gist)" class="min-h-[40px] min-w-[40px] rounded-lg text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/70 transition-colors flex items-center justify-center">
+          <svg class="w-4 h-4 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hlavní obsah -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 pb-24 md:pb-12 flex flex-col gap-8">
+
+    <!-- Volba režimu -->
+    <section class="flex flex-col items-center gap-3">
+      <div class="text-xs text-slate-400 font-medium uppercase tracking-wider">
+        Zvolte režim zpracování AI
+      </div>
+      <div class="grid grid-cols-3 gap-2 w-full max-w-md p-1.5 bg-slate-900/90 rounded-2xl border border-slate-800 shadow-inner">
+        <button id="modeVerbatim" class="mode-btn active px-3 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 flex flex-col items-center justify-center gap-1 bg-indigo-600 text-white shadow-sm" data-mode="verbatim">
+          <span>Doslovný přepis</span>
+          <span class="text-[10px] font-normal opacity-80">Oprava gramatiky</span>
+        </button>
+        <button id="modeSummary" class="mode-btn px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50" data-mode="summary">
+          <span>Stručné shrnutí</span>
+          <span class="text-[10px] font-normal opacity-70">Zkrácení textu</span>
+        </button>
+        <button id="modeBullets" class="mode-btn px-3 py-2.5 rounded-xl text-xs sm:text-sm font-medium transition-all duration-200 flex flex-col items-center justify-center gap-1 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50" data-mode="bullets">
+          <span>Body &amp; Úkoly</span>
+          <span class="text-[10px] font-normal opacity-70">Odrážkový seznam</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Mikrofon -->
+    <section class="flex flex-col items-center justify-center relative py-4 sm:py-6">
+      <div id="ambientGlow" class="absolute w-64 h-64 rounded-full bg-indigo-500/10 blur-3xl pointer-events-none transition-all duration-500"></div>
+
+      <div id="recordingRipples" class="absolute hidden pointer-events-none">
+        <div class="w-36 h-36 rounded-full border-2 border-rose-500/40 animate-ripple"></div>
+        <div class="w-36 h-36 rounded-full border-2 border-rose-500/20 animate-ripple" style="animation-delay: 0.6s;"></div>
+      </div>
+
+      <div class="relative z-10 flex flex-col items-center">
+        <button id="btnMic" class="relative group w-28 h-28 sm:w-32 sm:h-32 rounded-full bg-gradient-to-b from-slate-800 to-slate-900 border-2 border-slate-700/80 hover:border-indigo-500/70 shadow-2xl shadow-black/80 flex items-center justify-center transition-all duration-300 active:scale-95 focus:outline-none focus:ring-4 focus:ring-indigo-500/30">
+          <div id="micInnerIcon" class="w-16 h-16 rounded-full bg-indigo-600/20 group-hover:bg-indigo-600/30 flex items-center justify-center transition-colors">
+            <svg id="svgMic" class="w-8 h-8 text-indigo-400 transition-transform group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" x2="12" y1="19" y2="22"/>
+            </svg>
+            <div id="svgStop" class="hidden w-6 h-6 rounded-md bg-rose-500 shadow-md"></div>
+          </div>
+        </button>
+
+        <div class="mt-4 flex flex-col items-center gap-1.5">
+          <div id="recordingTimer" class="font-mono text-sm tracking-wider text-slate-400 tabular-nums">00:00</div>
+          <p id="micStatusText" class="text-sm font-medium text-slate-300 text-center">
+            Klepněte pro zahájení nahrávání
+          </p>
+          <p class="text-xs text-slate-500 text-center max-w-xs">
+            Nativní rozpoznávání češtiny v prohlížeči. Po domluvení klepněte znovu.
+          </p>
+        </div>
+      </div>
+
+      <canvas id="waveformCanvas" class="w-64 h-8 mt-3 rounded-lg opacity-80" width="256" height="32"></canvas>
+    </section>
+
+    <!-- Náhled zachycené řeči -->
+    <section id="rawTranscriptSection" class="hidden w-full max-w-3xl mx-auto">
+      <div class="p-3.5 bg-slate-900/60 rounded-xl border border-slate-800 text-xs text-slate-400 flex items-start gap-2.5">
+        <span class="font-semibold text-slate-300 uppercase tracking-wider text-[10px] shrink-0 mt-0.5">Surový záznam:</span>
+        <div id="rawTranscriptText" class="flex-1 font-mono text-slate-300 leading-relaxed italic">
+          Zatím žádný text...
+        </div>
+        <button id="btnManualProcess" title="Znovu zpracovat přes Gemini" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium shrink-0 ml-2">
+          Zpracovat AI →
+        </button>
+      </div>
+    </section>
+
+    <!-- AI výsledek -->
+    <section class="w-full max-w-3xl mx-auto flex flex-col gap-3">
+      <div class="flex items-center justify-between px-1">
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-bold text-slate-200">Výsledek z Gemini 2.5 Flash</span>
+          <span id="outputMetadata" class="text-xs text-slate-500 font-medium">· Připraveno</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btnTTS" title="Přečíst nahlas" class="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1 px-2 py-1 rounded-md bg-slate-800/60 hover:bg-slate-700/60 border border-slate-700/50 transition-colors">
+            <svg class="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+            </svg>
+            <span class="hidden sm:inline">Přečíst</span>
+          </button>
+          <button id="btnToggleEdit" title="Přepnout úpravy" class="text-xs text-slate-400 hover:text-slate-200 flex items-center gap-1 px-2 py-1 rounded-md bg-slate-800/60 hover:bg-slate-700/60 border border-slate-700/50 transition-colors">
+            <svg class="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+            </svg>
+            <span class="hidden sm:inline">Upravit</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="relative rounded-2xl bg-slate-900/90 border border-slate-800/90 shadow-xl overflow-hidden focus-within:border-indigo-500/60 transition-colors">
+        <div id="aiLoadingOverlay" class="absolute inset-0 bg-[#080c14]/85 backdrop-blur-sm z-20 flex flex-col items-center justify-center gap-3 hidden transition-opacity">
+          <div class="w-8 h-8 rounded-full border-2 border-indigo-500/30 border-t-indigo-500 animate-spin"></div>
+          <span class="text-xs font-semibold text-indigo-300 animate-pulse">Gemini 2.5 Flash zpracovává diktát...</span>
+        </div>
+
+        <textarea id="outputTextArea" rows="7" placeholder="Zde se ihned po domluvení objeví upravený, vyčištěný text z Gemini..." class="w-full p-4 sm:p-5 bg-transparent text-slate-100 placeholder:text-slate-600 text-sm sm:text-base leading-relaxed resize-none focus:outline-none"></textarea>
+
+        <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-slate-950/80 border-t border-slate-800/80">
+          <div class="flex items-center gap-2 text-xs text-slate-400">
+            <span id="statsWords">0 slov</span>
+            <span class="text-slate-600">·</span>
+            <span id="statsChars">0 znaků</span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button id="btnClear" title="Vymazat výsledek" class="min-h-[38px] px-3 py-1.5 rounded-xl text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 text-xs font-medium transition-colors flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 6h18"/>
+                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+              </svg>
+              <span>Smazat</span>
+            </button>
+
+            <button id="btnSave" title="Uložit do historie a synchronizovat s Gistem" class="min-h-[38px] px-3.5 py-1.5 rounded-xl text-slate-200 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium transition-colors flex items-center gap-1.5 shadow-sm">
+              <svg class="w-3.5 h-3.5 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                <polyline points="17 21 17 13 7 13 7 21"/>
+                <polyline points="7 3 7 8 15 8"/>
+              </svg>
+              <span>Uložit &amp; Gist</span>
+            </button>
+
+            <button id="btnCopy" class="min-h-[38px] px-4 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs sm:text-sm font-semibold transition-all shadow-md shadow-indigo-600/20 active:scale-95 flex items-center gap-1.5">
+              <svg id="copyIconSvg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+              </svg>
+              <span id="copyBtnText">Kopírovat</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Historie -->
+    <section class="w-full max-w-3xl mx-auto flex flex-col gap-4 mt-2">
+      <div class="flex items-center justify-between border-b border-slate-800/80 pb-3">
+        <div class="flex items-center gap-2">
+          <h2 class="text-sm font-bold text-slate-200">Historie záznamů</h2>
+          <span id="historyCount" class="text-xs text-slate-500 font-mono">(0)</span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btnClearAllHistory" class="text-xs text-slate-500 hover:text-rose-400 transition-colors">
+            Smazat vše
+          </button>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <div class="relative flex-1">
+          <input id="historySearchInput" type="text" placeholder="Hledat v historii..." class="w-full bg-slate-900/60 border border-slate-800 rounded-xl px-3.5 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-slate-700" />
+        </div>
+        <select id="historyFilterMode" class="bg-slate-900/60 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-slate-700">
+          <option value="all">Všechny režimy</option>
+          <option value="verbatim">Doslovný přepis</option>
+          <option value="summary">Stručné shrnutí</option>
+          <option value="bullets">Body &amp; Úkoly</option>
+        </select>
+      </div>
+
+      <div id="historyListContainer" class="flex flex-col gap-2.5"></div>
+    </section>
+
+  </main>
+
+  <!-- Nastavení Modal -->
+  <div id="modalSettings" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <svg class="w-5 h-5 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          <h3 class="text-base font-bold text-white">Nastavení integrací</h3>
+        </div>
+        <button id="btnCloseSettings" class="min-h-[36px] min-w-[36px] rounded-lg text-slate-400 hover:text-white flex items-center justify-center">✕</button>
+      </div>
+
+      <div class="flex flex-col gap-4 text-xs">
+        <div class="flex flex-col gap-1.5">
+          <label class="font-semibold text-slate-300">Gemini API Key</label>
+          <input id="inputGeminiApiKey" type="password" placeholder="Vložte váš Gemini API klíč..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-200 font-mono focus:border-indigo-500 focus:outline-none" />
+          <p class="text-[11px] text-slate-500">
+            Ukládá se pouze v paměti vašeho prohlížeče (localStorage). Volá model <code class="text-indigo-300">gemini-2.5-flash</code>.
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="font-semibold text-slate-300">GitHub Personal Access Token (PAT)</label>
+          <input id="inputGithubPat" type="password" placeholder="ghp_... (vyžaduje oprávnění 'gist')" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-200 font-mono focus:border-indigo-500 focus:outline-none" />
+          <p class="text-[11px] text-slate-500">
+            Token z GitHubu pro čtení a zápis Gistů.
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <div class="flex items-center justify-between">
+            <label class="font-semibold text-slate-300">GitHub Gist ID</label>
+            <button id="btnAutoCreateGist" type="button" class="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium">
+              + Vytvořit nový Gist automaticky
+            </button>
+          </div>
+          <input id="inputGistId" type="text" placeholder="např. 7a8b9c0d1e2f3a4b..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-200 font-mono focus:border-indigo-500 focus:outline-none" />
+          <p class="text-[11px] text-slate-500">
+            ID Gistu pro synchronizaci mezi mobilem a PC (soubor <code>audiopen_notes.json</code>).
+          </p>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="font-semibold text-slate-300">Jazyk diktování</label>
+          <select id="selectSpeechLang" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:border-indigo-500 focus:outline-none">
+            <option value="cs-CZ" selected>Čeština (cs-CZ)</option>
+            <option value="sk-SK">Slovenština (sk-SK)</option>
+            <option value="en-US">Angličtina (en-US)</option>
+            <option value="de-DE">Němčina (de-DE)</option>
+          </select>
+        </div>
+
+        <div class="flex items-center justify-between pt-1">
+          <span class="text-slate-300 font-medium">Automaticky ukládat do Gistu</span>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input id="toggleAutoSync" type="checkbox" class="sr-only peer" checked>
+            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600"></div>
+          </label>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-800 mt-2">
+        <button id="btnCancelSettings" class="px-4 py-2 rounded-xl text-slate-400 hover:text-white text-xs font-medium">Zrušit</button>
+        <button id="btnSaveSettings" class="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md">Uložit nastavení</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Skript aplikace -->
+  <script>
+    (function () {
+      'use strict';
+
+      const STORAGE_KEYS = {
+        SETTINGS: 'audiopen_settings',
+        NOTES: 'audiopen_notes_v1'
+      };
+
+      // Výchozí klíč je prázdný – zadává se bezpečně v UI a ukládá do localStorage
+      const DEFAULT_API_KEY = '';
+
+      let state = {
+        mode: 'verbatim',
+        isRecording: false,
+        speechLang: 'cs-CZ',
+        apiKey: '',
+        githubPat: '',
+        gistId: '',
+        autoSync: true,
+        notes: [],
+        currentTranscript: '',
+        isProcessingAi: false,
+        recordStartTime: 0,
+        recordTimerInterval: null,
+      };
+
+      let recognition = null;
+      let audioContext = null;
+      let analyser = null;
+      let microphoneStream = null;
+      let animationFrameId = null;
+
+      const btnMic = document.getElementById('btnMic');
+      const micInnerIcon = document.getElementById('micInnerIcon');
+      const svgMic = document.getElementById('svgMic');
+      const svgStop = document.getElementById('svgStop');
+      const micStatusText = document.getElementById('micStatusText');
+      const recordingTimer = document.getElementById('recordingTimer');
+      const recordingRipples = document.getElementById('recordingRipples');
+      const ambientGlow = document.getElementById('ambientGlow');
+      const waveformCanvas = document.getElementById('waveformCanvas');
+      const rawTranscriptSection = document.getElementById('rawTranscriptSection');
+      const rawTranscriptText = document.getElementById('rawTranscriptText');
+      const btnManualProcess = document.getElementById('btnManualProcess');
+
+      const outputTextArea = document.getElementById('outputTextArea');
+      const outputMetadata = document.getElementById('outputMetadata');
+      const aiLoadingOverlay = document.getElementById('aiLoadingOverlay');
+      const statsWords = document.getElementById('statsWords');
+      const statsChars = document.getElementById('statsChars');
+
+      const btnCopy = document.getElementById('btnCopy');
+      const copyBtnText = document.getElementById('copyBtnText');
+      const copyIconSvg = document.getElementById('copyIconSvg');
+      const btnSave = document.getElementById('btnSave');
+      const btnClear = document.getElementById('btnClear');
+      const btnTTS = document.getElementById('btnTTS');
+      const btnToggleEdit = document.getElementById('btnToggleEdit');
+
+      const modeButtons = {
+        verbatim: document.getElementById('modeVerbatim'),
+        summary: document.getElementById('modeSummary'),
+        bullets: document.getElementById('modeBullets'),
+      };
+
+      const gistStatusDot = document.getElementById('gistStatusDot');
+      const gistStatusLabel = document.getElementById('gistStatusLabel');
+      const btnManualSync = document.getElementById('btnManualSync');
+      const syncIconSvg = document.getElementById('syncIconSvg');
+
+      const historyListContainer = document.getElementById('historyListContainer');
+      const historyCount = document.getElementById('historyCount');
+      const historySearchInput = document.getElementById('historySearchInput');
+      const historyFilterMode = document.getElementById('historyFilterMode');
+      const btnClearAllHistory = document.getElementById('btnClearAllHistory');
+
+      const btnOpenSettings = document.getElementById('btnOpenSettings');
+      const btnCloseSettings = document.getElementById('btnCloseSettings');
+      const btnCancelSettings = document.getElementById('btnCancelSettings');
+      const btnSaveSettings = document.getElementById('btnSaveSettings');
+      const modalSettings = document.getElementById('modalSettings');
+      const inputGeminiApiKey = document.getElementById('inputGeminiApiKey');
+      const inputGithubPat = document.getElementById('inputGithubPat');
+      const inputGistId = document.getElementById('inputGistId');
+      const selectSpeechLang = document.getElementById('selectSpeechLang');
+      const toggleAutoSync = document.getElementById('toggleAutoSync');
+      const btnAutoCreateGist = document.getElementById('btnAutoCreateGist');
+
+      function init() {
+        loadSettings();
+        loadNotes();
+        setupSpeechRecognition();
+        attachEventListeners();
+        updateStats();
+        renderHistory();
+        updateGistStatusUI();
+        if (!state.apiKey) {
+          setTimeout(() => {
+            openSettingsModal();
+            showToast('Vložte prosím svůj Gemini API klíč v nastavení.', 'info');
+          }, 500);
+        }
+      }
+
+      function loadSettings() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+          if (raw) {
+            const data = JSON.parse(raw);
+            state.apiKey = data.apiKey || DEFAULT_API_KEY;
+            state.githubPat = data.githubPat || '';
+            state.gistId = data.gistId || '';
+            state.speechLang = data.speechLang || 'cs-CZ';
+            state.autoSync = data.autoSync !== undefined ? data.autoSync : true;
+          } else {
+            state.apiKey = DEFAULT_API_KEY;
+            state.speechLang = 'cs-CZ';
+            state.autoSync = true;
+            saveSettings();
+          }
+        } catch (e) {
+          state.apiKey = DEFAULT_API_KEY;
+        }
+
+        inputGeminiApiKey.value = state.apiKey;
+        inputGithubPat.value = state.githubPat;
+        inputGistId.value = state.gistId;
+        selectSpeechLang.value = state.speechLang;
+        toggleAutoSync.checked = state.autoSync;
+      }
+
+      function saveSettings() {
+        const payload = {
+          apiKey: state.apiKey,
+          githubPat: state.githubPat,
+          gistId: state.gistId,
+          speechLang: state.speechLang,
+          autoSync: state.autoSync,
+        };
+        localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(payload));
+      }
+
+      function loadNotes() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEYS.NOTES);
+          state.notes = raw ? JSON.parse(raw) : [];
+        } catch (e) {
+          state.notes = [];
+        }
+      }
+
+      function saveNotesLocal() {
+        localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(state.notes));
+        renderHistory();
+      }
+
+      function showToast(message, type = 'info') {
+        const container = document.getElementById('toastContainer');
+        const toast = document.createElement('div');
+        toast.className = `px-4 py-2.5 rounded-xl text-xs font-semibold shadow-xl border flex items-center gap-2 transform transition-all duration-300 translate-y-2 opacity-0 pointer-events-auto ${
+          type === 'success' ? 'bg-emerald-950/90 border-emerald-700/80 text-emerald-200' :
+          type === 'error' ? 'bg-rose-950/90 border-rose-700/80 text-rose-200' :
+          'bg-slate-900/90 border-slate-700 text-slate-200'
+        }`;
+        const icon = type === 'success' ? '✓' : type === 'error' ? '⚠️' : 'ℹ️';
+        toast.innerHTML = `<span class="text-sm">${icon}</span><span>${message}</span>`;
+        container.appendChild(toast);
+
+        requestAnimationFrame(() => toast.classList.remove('translate-y-2', 'opacity-0'));
+        setTimeout(() => {
+          toast.classList.add('opacity-0', 'translate-y-2');
+          setTimeout(() => toast.remove(), 300);
+        }, 3200);
+      }
+
+      function setupSpeechRecognition() {
+        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRec) {
+          micStatusText.innerHTML = '<span class="text-amber-400">Prohlížeč nepodporuje SpeechRecognition</span>';
+          return;
+        }
+
+        recognition = new SpeechRec();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = state.speechLang || 'cs-CZ';
+
+        recognition.onstart = () => {
+          state.isRecording = true;
+          updateMicUI(true);
+          startTimer();
+          startWaveform();
+        };
+
+        recognition.onresult = (event) => {
+          let interim = '';
+          let final = '';
+
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+              final += event.results[i][0].transcript + ' ';
+            } else {
+              interim += event.results[i][0].transcript;
+            }
+          }
+
+          if (final) {
+            state.currentTranscript = (state.currentTranscript ? state.currentTranscript + ' ' : '') + final.trim();
+          }
+
+          const displayText = (state.currentTranscript + ' ' + interim).trim();
+          rawTranscriptText.textContent = displayText || 'Poslouchám...';
+          rawTranscriptSection.classList.remove('hidden');
+        };
+
+        recognition.onerror = (event) => {
+          if (event.error === 'not-allowed') {
+            showToast('Přístup k mikrofonu byl zamítnut.', 'error');
+          } else if (event.error !== 'no-speech') {
+            showToast('Chyba mikrofonu: ' + event.error, 'error');
+          }
+          stopRecording();
+        };
+
+        recognition.onend = () => {
+          if (state.isRecording) stopRecording();
+        };
+      }
+
+      function toggleRecording() {
+        if (!recognition) setupSpeechRecognition();
+        if (state.isRecording) {
+          stopRecording();
+          if (state.currentTranscript && state.currentTranscript.trim().length > 0) {
+            processWithGemini(state.currentTranscript.trim());
+          }
+        } else {
+          startRecording();
+        }
+      }
+
+      function startRecording() {
+        state.currentTranscript = '';
+        rawTranscriptText.textContent = 'Poslouchám váš hlas...';
+        rawTranscriptSection.classList.remove('hidden');
+        try {
+          recognition.lang = state.speechLang || 'cs-CZ';
+          recognition.start();
+        } catch (e) {
+          try {
+            recognition.stop();
+            setTimeout(() => recognition.start(), 200);
+          } catch (err) {
+            showToast('Nelze spustit mikrofon.', 'error');
+          }
+        }
+      }
+
+      function stopRecording() {
+        state.isRecording = false;
+        updateMicUI(false);
+        stopTimer();
+        stopWaveform();
+        try {
+          if (recognition) recognition.stop();
+        } catch (e) {}
+      }
+
+      function updateMicUI(isRec) {
+        if (isRec) {
+          btnMic.classList.add('animate-pulse-glow', 'border-rose-500', 'bg-gradient-to-b', 'from-rose-950/80', 'to-slate-900');
+          btnMic.classList.remove('border-slate-700/80');
+          micInnerIcon.classList.remove('bg-indigo-600/20');
+          micInnerIcon.classList.add('bg-rose-500/20');
+          svgMic.classList.add('hidden');
+          svgStop.classList.remove('hidden');
+          recordingRipples.classList.remove('hidden');
+          ambientGlow.classList.remove('bg-indigo-500/10');
+          ambientGlow.classList.add('bg-rose-500/25');
+          micStatusText.innerHTML = '<span class="text-rose-400 font-semibold">Nahrávám hlas... Klepněte pro stop</span>';
+        } else {
+          btnMic.classList.remove('animate-pulse-glow', 'border-rose-500', 'bg-gradient-to-b', 'from-rose-950/80');
+          btnMic.classList.add('border-slate-700/80');
+          micInnerIcon.classList.remove('bg-rose-500/20');
+          micInnerIcon.classList.add('bg-indigo-600/20');
+          svgMic.classList.remove('hidden');
+          svgStop.classList.add('hidden');
+          recordingRipples.classList.add('hidden');
+          ambientGlow.classList.remove('bg-rose-500/25');
+          ambientGlow.classList.add('bg-indigo-500/10');
+          micStatusText.textContent = 'Klepněte pro zahájení nahrávání';
+        }
+      }
+
+      function startTimer() {
+        state.recordStartTime = Date.now();
+        recordingTimer.textContent = '00:00';
+        clearInterval(state.recordTimerInterval);
+        state.recordTimerInterval = setInterval(() => {
+          const elapsed = Math.floor((Date.now() - state.recordStartTime) / 1000);
+          const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+          const secs = String(elapsed % 60).padStart(2, '0');
+          recordingTimer.textContent = `${mins}:${secs}`;
+        }, 1000);
+      }
+
+      function stopTimer() {
+        clearInterval(state.recordTimerInterval);
+      }
+
+      function startWaveform() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+        navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+          microphoneStream = stream;
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          const source = audioContext.createMediaStreamSource(stream);
+          analyser = audioContext.createAnalyser();
+          analyser.fftSize = 64;
+          source.connect(analyser);
+
+          const canvasCtx = waveformCanvas.getContext('2d');
+          const bufferLength = analyser.frequencyBinCount;
+          const dataArray = new Uint8Array(bufferLength);
+
+          function draw() {
+            animationFrameId = requestAnimationFrame(draw);
+            analyser.getByteFrequencyData(dataArray);
+
+            canvasCtx.clearRect(0, 0, waveformCanvas.width, waveformCanvas.height);
+            const barWidth = (waveformCanvas.width / bufferLength) * 1.5;
+            let x = 0;
+
+            for (let i = 0; i < bufferLength; i++) {
+              const barHeight = (dataArray[i] / 255) * waveformCanvas.height;
+              canvasCtx.fillStyle = `rgba(244, 63, 94, ${Math.max(0.2, dataArray[i] / 255)})`;
+              canvasCtx.fillRect(x, waveformCanvas.height - barHeight, barWidth - 1, barHeight);
+              x += barWidth;
+            }
+          }
+          draw();
+        }).catch(() => {});
+      }
+
+      function stopWaveform() {
+        if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        if (microphoneStream) {
+          microphoneStream.getTracks().forEach((track) => track.stop());
+          microphoneStream = null;
+        }
+        if (audioContext && audioContext.state !== 'closed') {
+          audioContext.close();
+          audioContext = null;
+        }
+        const canvasCtx = waveformCanvas.getContext('2d');
+        canvasCtx.clearRect(0, 0, waveformCanvas.width, waveformCanvas.height);
+      }
+
+      async function processWithGemini(inputText) {
+        if (!inputText || !inputText.trim()) {
+          showToast('Není zadán žádný text k přepisu.', 'error');
+          return;
+        }
+
+        const apiKey = state.apiKey.trim();
+        if (!apiKey) {
+          showToast('Chybí Gemini API klíč. Zadejte jej v nastavení (ozubené kolo).', 'error');
+          openSettingsModal();
+          return;
+        }
+
+        setAiLoading(true);
+
+        let systemInstruction = '';
+        if (state.mode === 'verbatim') {
+          systemInstruction = 'Jsi špičkový asistent pro úpravu mluveného slova. Uprav následující mluvený text do spisovné, perfektně čitelné češtiny. Oprav gramatické chyby, interpunkci a překlepy z diktování, odstraň slovní vatu a parazitní slova (jako "ééé", "prostě", "jakože"), ale PŘÍSNĚ ZACHOVEJ původní myšlenku, tón i doslovný význam. Nevymýšlej si nic navíc, neodpovídej, nepiš žádné úvody ani závěry, vrať POUZE upravený text.';
+        } else if (state.mode === 'summary') {
+          systemInstruction = 'Jsi špičkový asistent pro syntézu myšlenek. Z následujícího nadiktovaného textu vytvoř stručné, jasné a výstižné shrnutí v češtině. Zachyť klíčovou pointu a nejdůležitější informace v 1 až 3 odstavcích. Nevymýšlej si nic navíc, neodpovídej konverzačně, vrať POUZE shrnutý text.';
+        } else if (state.mode === 'bullets') {
+          systemInstruction = 'Jsi špičkový asistent pro organizaci myšlenek. Převeď následující nadiktovaný text do přehledného seznamu odrážek (bullet points) v češtině. Logicky strukturuj klíčová fakta, úkoly nebo poznámky. Nevymýšlej si nic navíc, vrať POUZE seznam odrážek.';
+        }
+
+        const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+        let resultText = '';
+
+        for (const model of modelsToTry) {
+          try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+            const response = await fetch(url, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                systemInstruction: { parts: [{ text: systemInstruction }] },
+                contents: [{ role: 'user', parts: [{ text: inputText }] }],
+                generationConfig: {
+                  temperature: 0.2,
+                  maxOutputTokens: 2048,
+                }
+              })
+            });
+
+            if (!response.ok) continue;
+
+            const data = await response.json();
+            if (data.candidates && data.candidates[0]?.content?.parts) {
+              resultText = data.candidates[0].content.parts.map(p => p.text).join('').trim();
+              document.getElementById('modelIndicator').textContent = model;
+              break;
+            }
+          } catch (err) {
+            console.error(`Call to ${model} failed:`, err);
+          }
+        }
+
+        setAiLoading(false);
+
+        if (!resultText) {
+          showToast('Nepodařilo se získat odpověď z Gemini. Zkontrolujte API klíč v nastavení.', 'error');
+          return;
+        }
+
+        outputTextArea.value = resultText;
+        outputMetadata.textContent = `· Zpracováno (${getModeLabel(state.mode)})`;
+        updateStats();
+        showToast('Text byl upraven modelem Gemini!', 'success');
+
+        if (state.autoSync && state.gistId && state.githubPat) {
+          saveCurrentNote(true);
+        }
+      }
+
+      function setAiLoading(isLoading) {
+        state.isProcessingAi = isLoading;
+        if (isLoading) {
+          aiLoadingOverlay.classList.remove('hidden');
+        } else {
+          aiLoadingOverlay.classList.add('hidden');
+        }
+      }
+
+      function getModeLabel(mode) {
+        if (mode === 'verbatim') return 'Doslovný přepis';
+        if (mode === 'summary') return 'Stručné shrnutí';
+        if (mode === 'bullets') return 'Body & Úkoly';
+        return mode;
+      }
+
+      function updateStats() {
+        const text = outputTextArea.value.trim();
+        const chars = text.length;
+        const words = text ? text.split(/\s+/).length : 0;
+        statsWords.textContent = `${words} ${words === 1 ? 'slovo' : words >= 2 && words <= 4 ? 'slova' : 'slov'}`;
+        statsChars.textContent = `${chars} ${chars === 1 ? 'znak' : chars >= 2 && chars <= 4 ? 'znaky' : 'znaků'}`;
+      }
+
+      async function copyOutputText() {
+        const text = outputTextArea.value.trim();
+        if (!text) {
+          showToast('Není co kopírovat.', 'error');
+          return;
+        }
+
+        try {
+          await navigator.clipboard.writeText(text);
+          copyBtnText.textContent = 'Zkopírováno!';
+          btnCopy.classList.remove('bg-indigo-600', 'hover:bg-indigo-500');
+          btnCopy.classList.add('bg-emerald-600', 'hover:bg-emerald-500');
+          copyIconSvg.innerHTML = '<polyline points="20 6 9 17 4 12"/>';
+          showToast('Zkopírováno do schránky!', 'success');
+
+          setTimeout(() => {
+            copyBtnText.textContent = 'Kopírovat';
+            btnCopy.classList.remove('bg-emerald-600', 'hover:bg-emerald-500');
+            btnCopy.classList.add('bg-indigo-600', 'hover:bg-indigo-500');
+            copyIconSvg.innerHTML = '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>';
+          }, 2000);
+        } catch (e) {
+          outputTextArea.select();
+          document.execCommand('copy');
+          showToast('Zkopírováno!', 'success');
+        }
+      }
+
+      async function saveCurrentNote(silent = false) {
+        const text = outputTextArea.value.trim();
+        if (!text) {
+          if (!silent) showToast('Prázdný text nelze uložit.', 'error');
+          return;
+        }
+
+        const newNote = {
+          id: 'note_' + Date.now(),
+          text: text,
+          mode: state.mode,
+          timestamp: new Date().toISOString(),
+          raw: state.currentTranscript || text
+        };
+
+        state.notes.unshift(newNote);
+        saveNotesLocal();
+
+        if (!silent) showToast('Zpráva uložena do historie!', 'success');
+
+        if (state.githubPat && state.gistId) {
+          await pushNotesToGist();
+        } else if (!silent) {
+          showToast('Uloženo lokálně (pro sync zadejte Gist v nastavení).');
+        }
+      }
+
+      function clearCurrentNote() {
+        outputTextArea.value = '';
+        state.currentTranscript = '';
+        rawTranscriptText.textContent = 'Zatím žádný text...';
+        rawTranscriptSection.classList.add('hidden');
+        outputMetadata.textContent = '· Vymazáno';
+        updateStats();
+        showToast('Zpráva byla smazána.');
+      }
+
+      function playTTS() {
+        const text = outputTextArea.value.trim();
+        if (!text) {
+          showToast('Není co přečíst.', 'error');
+          return;
+        }
+        if (!window.speechSynthesis) {
+          showToast('Hlasová syntéza není v prohlížeči dostupná.', 'error');
+          return;
+        }
+
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = state.speechLang || 'cs-CZ';
+        utterance.rate = 1.0;
+        window.speechSynthesis.speak(utterance);
+        showToast('Předčítám text...');
+      }
+
+      async function pushNotesToGist() {
+        if (!state.githubPat || !state.gistId) {
+          showToast('Chybí GitHub PAT nebo Gist ID.', 'error');
+          return false;
+        }
+
+        setGistSyncing(true);
+        try {
+          const url = `https://api.github.com/gists/${state.gistId.trim()}`;
+          const res = await fetch(url, {
+            method: 'PATCH',
+            headers: {
+              'Authorization': `Bearer ${state.githubPat.trim()}`,
+              'Accept': 'application/vnd.github+json',
+              'Content-Type': 'application/json',
+              'X-GitHub-Api-Version': '2022-11-28'
+            },
+            body: JSON.stringify({
+              description: "Hlasové Pero / Audio Pen Notes",
+              files: {
+                "audiopen_notes.json": { content: JSON.stringify(state.notes, null, 2) }
+              }
+            })
+          });
+
+          if (!res.ok) {
+            showToast('Chyba zápisu do Gistu (' + res.status + ')', 'error');
+            setGistSyncing(false, false);
+            return false;
+          }
+
+          setGistSyncing(false, true);
+          showToast('Data uložena do GitHub Gistu!', 'success');
+          return true;
+        } catch (e) {
+          showToast('Chyba síťového připojení k GitHubu.', 'error');
+          setGistSyncing(false, false);
+          return false;
+        }
+      }
+
+      async function pullNotesFromGist() {
+        if (!state.gistId) {
+          showToast('Zadejte nejprve Gist ID v nastavení.', 'error');
+          openSettingsModal();
+          return false;
+        }
+
+        setGistSyncing(true);
+        try {
+          const url = `https://api.github.com/gists/${state.gistId.trim()}`;
+          const headers = {
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28'
+          };
+          if (state.githubPat) {
+            headers['Authorization'] = `Bearer ${state.githubPat.trim()}`;
+          }
+
+          const res = await fetch(url, { method: 'GET', headers });
+          if (!res.ok) {
+            showToast('Nepodařilo se načíst Gist (' + res.status + ')', 'error');
+            setGistSyncing(false, false);
+            return false;
+          }
+
+          const gistData = await res.json();
+          let jsonContent = null;
+
+          if (gistData.files['audiopen_notes.json']) {
+            jsonContent = gistData.files['audiopen_notes.json'].content;
+          } else {
+            for (const key of Object.keys(gistData.files)) {
+              if (key.endsWith('.json')) {
+                jsonContent = gistData.files[key].content;
+                break;
+              }
+            }
+          }
+
+          if (jsonContent) {
+            const remoteNotes = JSON.parse(jsonContent);
+            if (Array.isArray(remoteNotes)) {
+              const existingIds = new Set(state.notes.map(n => n.id || n.timestamp));
+              let addedCount = 0;
+              for (const r of remoteNotes) {
+                const rid = r.id || r.timestamp;
+                if (!existingIds.has(rid)) {
+                  state.notes.push(r);
+                  existingIds.add(rid);
+                  addedCount++;
+                }
+              }
+              state.notes.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+              saveNotesLocal();
+              showToast(`Synchronizováno z Gistu (+${addedCount} nových položek)`, 'success');
+              setGistSyncing(false, true);
+              return true;
+            }
+          }
+
+          showToast('V Gistu zatím není soubor audiopen_notes.json.');
+          setGistSyncing(false, true);
+          return true;
+        } catch (e) {
+          showToast('Chyba při stahování z Gistu.', 'error');
+          setGistSyncing(false, false);
+          return false;
+        }
+      }
+
+      function setGistSyncing(isSyncing, success = true) {
+        if (isSyncing) {
+          syncIconSvg.classList.add('animate-spin', 'text-indigo-400');
+          gistStatusDot.className = 'w-2 h-2 rounded-full bg-amber-400 animate-pulse';
+          gistStatusLabel.textContent = 'Synchronizuji...';
+        } else {
+          syncIconSvg.classList.remove('animate-spin', 'text-indigo-400');
+          if (success) {
+            gistStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+            gistStatusLabel.textContent = 'Gist spojen';
+          } else {
+            gistStatusDot.className = 'w-2 h-2 rounded-full bg-rose-500';
+            gistStatusLabel.textContent = 'Chyba spojení';
+          }
+        }
+      }
+
+      function updateGistStatusUI() {
+        if (state.gistId) {
+          gistStatusDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+          gistStatusLabel.textContent = `Gist: ${state.gistId.slice(0, 6)}...`;
+        } else {
+          gistStatusDot.className = 'w-2 h-2 rounded-full bg-slate-600';
+          gistStatusLabel.textContent = 'Gist nepřipojen';
+        }
+      }
+
+      async function autoCreateGist() {
+        const pat = inputGithubPat.value.trim() || state.githubPat;
+        if (!pat) {
+          showToast('Zadejte nejprve GitHub PAT token s právem "gist".', 'error');
+          return;
+        }
+
+        btnAutoCreateGist.textContent = 'Vytvářím Gist...';
+        try {
+          const res = await fetch('https://api.github.com/gists', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${pat}`,
+              'Accept': 'application/vnd.github+json',
+              'Content-Type': 'application/json',
+              'X-GitHub-Api-Version': '2022-11-28'
+            },
+            body: JSON.stringify({
+              description: 'Hlasové Pero / Audio Pen Notes Database',
+              public: false,
+              files: {
+                'audiopen_notes.json': { content: JSON.stringify(state.notes, null, 2) }
+              }
+            })
+          });
+
+          if (!res.ok) {
+            showToast('Chyba vytvoření Gistu: ' + res.status, 'error');
+            btnAutoCreateGist.textContent = '+ Vytvořit nový Gist automaticky';
+            return;
+          }
+
+          const createdGist = await res.json();
+          inputGistId.value = createdGist.id;
+          state.gistId = createdGist.id;
+          btnAutoCreateGist.textContent = '✓ Gist vytvořen!';
+          showToast('Privátní Gist byl vytvořen a propojen!', 'success');
+        } catch (e) {
+          showToast('Chyba spojení s GitHub API.', 'error');
+          btnAutoCreateGist.textContent = '+ Vytvořit nový Gist automaticky';
+        }
+      }
+
+      function renderHistory() {
+        const searchTerm = historySearchInput.value.toLowerCase().trim();
+        const modeFilter = historyFilterMode.value;
+
+        const filtered = state.notes.filter(n => {
+          const matchesSearch = !searchTerm || n.text.toLowerCase().includes(searchTerm);
+          const matchesMode = modeFilter === 'all' || n.mode === modeFilter;
+          return matchesSearch && matchesMode;
+        });
+
+        historyCount.textContent = `(${filtered.length})`;
+
+        if (filtered.length === 0) {
+          historyListContainer.innerHTML = `
+            <div class="py-8 px-4 text-center rounded-2xl bg-slate-900/40 border border-slate-800/60 text-slate-500 text-xs">
+              Zatím nemáte žádné uložené záznamy.
+            </div>
+          `;
+          return;
+        }
+
+        historyListContainer.innerHTML = filtered.map(item => {
+          const date = new Date(item.timestamp);
+          const formattedDate = date.toLocaleDateString('cs-CZ', {
+            day: 'numeric',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+          const modeName = getModeLabel(item.mode);
+          const words = item.text.trim().split(/\s+/).length;
+          const safeText = escapeHtml(item.text);
+
+          return `
+            <div class="group p-4 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-slate-700 transition-all flex flex-col gap-2.5 shadow-sm">
+              <div class="flex items-center justify-between text-[11px] text-slate-400">
+                <div class="flex items-center gap-2">
+                  <span class="font-semibold text-slate-300">${escapeHtml(formattedDate)}</span>
+                  <span class="text-slate-600">·</span>
+                  <span class="text-indigo-400 font-medium">${escapeHtml(modeName)}</span>
+                  <span class="text-slate-600">·</span>
+                  <span>${words} slov</span>
+                </div>
+                <div class="flex items-center gap-1">
+                  <button onclick="window.appCopyNote('${item.id}')" title="Kopírovat text" class="min-h-[30px] px-2 py-1 rounded-lg text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-700/60 border border-slate-700/50 text-[11px] font-medium transition-colors">
+                    Kopírovat
+                  </button>
+                  <button onclick="window.appLoadNoteToEditor('${item.id}')" title="Načíst do editoru" class="min-h-[30px] px-2 py-1 rounded-lg text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-700/60 border border-slate-700/50 text-[11px] font-medium transition-colors">
+                    Otevřít
+                  </button>
+                  <button onclick="window.appDeleteNote('${item.id}')" title="Smazat záznam" class="min-h-[30px] px-2 py-1 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-rose-500/10 text-[11px] transition-colors">
+                    ✕
+                  </button>
+                </div>
+              </div>
+              <p class="text-xs sm:text-sm text-slate-200 leading-relaxed line-clamp-3 whitespace-pre-wrap">${safeText}</p>
+            </div>
+          `;
+        }).join('');
+      }
+
+      function escapeHtml(str) {
+        if (!str) return '';
+        return str
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#039;');
+      }
+
+      window.appCopyNote = function(id) {
+        const item = state.notes.find(n => n.id === id);
+        if (item) {
+          navigator.clipboard.writeText(item.text);
+          showToast('Text z historie zkopírován!', 'success');
+        }
+      };
+
+      window.appLoadNoteToEditor = function(id) {
+        const item = state.notes.find(n => n.id === id);
+        if (item) {
+          outputTextArea.value = item.text;
+          updateStats();
+          outputMetadata.textContent = `· Načteno z historie (${getModeLabel(item.mode)})`;
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+          showToast('Záznam načten do editoru.');
+        }
+      };
+
+      window.appDeleteNote = function(id) {
+        state.notes = state.notes.filter(n => n.id !== id);
+        saveNotesLocal();
+        showToast('Záznam smazán z historie.');
+        if (state.autoSync && state.githubPat && state.gistId) {
+          pushNotesToGist();
+        }
+      };
+
+      function attachEventListeners() {
+        Object.entries(modeButtons).forEach(([m, btn]) => {
+          btn.addEventListener('click', () => {
+            state.mode = m;
+            Object.values(modeButtons).forEach(b => {
+              b.classList.remove('active', 'bg-indigo-600', 'text-white', 'shadow-sm');
+              b.classList.add('text-slate-400');
+            });
+            btn.classList.add('active', 'bg-indigo-600', 'text-white', 'shadow-sm');
+            btn.classList.remove('text-slate-400');
+
+            if (state.currentTranscript) {
+              processWithGemini(state.currentTranscript);
+            }
+          });
+        });
+
+        btnMic.addEventListener('click', toggleRecording);
+        btnManualProcess.addEventListener('click', () => {
+          if (state.currentTranscript) processWithGemini(state.currentTranscript);
+        });
+
+        outputTextArea.addEventListener('input', updateStats);
+        btnCopy.addEventListener('click', copyOutputText);
+        btnSave.addEventListener('click', () => saveCurrentNote(false));
+        btnClear.addEventListener('click', clearCurrentNote);
+        btnTTS.addEventListener('click', playTTS);
+        btnToggleEdit.addEventListener('click', () => {
+          outputTextArea.focus();
+          showToast('Můžete text upravit v poli.');
+        });
+
+        historySearchInput.addEventListener('input', renderHistory);
+        historyFilterMode.addEventListener('change', renderHistory);
+
+        btnClearAllHistory.addEventListener('click', () => {
+          if (state.notes.length === 0) return;
+          if (confirm('Opravdu chcete smazat celou historii záznamů?')) {
+            state.notes = [];
+            saveNotesLocal();
+            showToast('Historie byla vymazána.');
+            if (state.autoSync && state.githubPat && state.gistId) pushNotesToGist();
+          }
+        });
+
+        btnManualSync.addEventListener('click', () => pullNotesFromGist());
+
+        btnOpenSettings.addEventListener('click', openSettingsModal);
+        btnCloseSettings.addEventListener('click', closeSettingsModal);
+        btnCancelSettings.addEventListener('click', closeSettingsModal);
+        modalSettings.addEventListener('click', (e) => {
+          if (e.target === modalSettings) closeSettingsModal();
+        });
+
+        btnSaveSettings.addEventListener('click', () => {
+          state.apiKey = inputGeminiApiKey.value.trim() || DEFAULT_API_KEY;
+          state.githubPat = inputGithubPat.value.trim();
+          state.gistId = inputGistId.value.trim();
+          state.speechLang = selectSpeechLang.value;
+          state.autoSync = toggleAutoSync.checked;
+
+          saveSettings();
+          updateGistStatusUI();
+          closeSettingsModal();
+          showToast('Nastavení bylo uloženo.', 'success');
+
+          if (state.gistId) pullNotesFromGist();
+        });
+
+        btnAutoCreateGist.addEventListener('click', autoCreateGist);
+      }
+
+      function openSettingsModal() {
+        inputGeminiApiKey.value = state.apiKey;
+        inputGithubPat.value = state.githubPat;
+        inputGistId.value = state.gistId;
+        selectSpeechLang.value = state.speechLang;
+        toggleAutoSync.checked = state.autoSync;
+        modalSettings.classList.remove('hidden');
+      }
+
+      function closeSettingsModal() {
+        modalSettings.classList.add('hidden');
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>
