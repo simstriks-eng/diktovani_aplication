@@ -134,20 +134,28 @@
   <!-- Top Bar Contract with AudioPen Metallic Styling & Top History Button -->
   <header class="sticky top-0 z-30 border-b border-[#EBE4D8] bg-[#FAF7F2]/95 backdrop-blur-md px-4 sm:px-6 py-3 transition-all shadow-xs">
     <div class="max-w-5xl mx-auto flex items-center justify-between gap-3 sm:gap-4">
-      <!-- Zone 1: Brand Wordmark -->
-      <div class="flex items-center gap-2.5 sm:gap-3">
-        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 p-0.5 shadow-md shadow-orange-500/25 flex items-center justify-center">
-          <div class="w-full h-full bg-white rounded-[10px] flex items-center justify-center">
-            <svg class="w-4 h-4 text-orange-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-              <line x1="12" x2="12" y1="19" y2="22"/>
-            </svg>
+      <!-- Zone 1: Brand Wordmark + Token Usage Widget -->
+      <div class="flex items-center gap-2.5 sm:gap-3.5 flex-wrap">
+        <div class="flex items-center gap-2.5 sm:gap-3">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 p-0.5 shadow-md shadow-orange-500/25 flex items-center justify-center shrink-0">
+            <div class="w-full h-full bg-white rounded-[10px] flex items-center justify-center">
+              <svg class="w-4 h-4 text-orange-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" x2="12" y1="19" y2="22"/>
+              </svg>
+            </div>
+          </div>
+          <div>
+            <span class="text-base font-extrabold tracking-tight text-stone-900 whitespace-nowrap block leading-tight">Hlasové Pero</span>
+            <span class="text-[11px] text-orange-700 font-semibold tracking-wide">AudioPen &amp; Gist</span>
           </div>
         </div>
-        <div>
-          <span class="text-base font-extrabold tracking-tight text-stone-900 whitespace-nowrap block leading-tight">Hlasové Pero</span>
-          <span class="text-[11px] text-orange-700 font-semibold tracking-wide">AudioPen &amp; Gist</span>
+
+        <!-- Počítadlo reálné spotřeby a zbývajících tokenů vedle názvu Hlasové Pero -->
+        <div id="tokenUsageWidget" title="Reálná denní spotřeba a zbývající kvóta Gemini API (Free Tier limit: 1 000 000 tokenů / 1 000 diktátů denně, reset o půlnoci PT / 09:00 SEČ)" class="px-2.5 py-1 rounded-xl bg-white border border-[#EBE4D8] text-[11px] sm:text-xs font-mono font-semibold text-stone-700 shadow-xs flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-orange-500 shrink-0"></span>
+          <span id="tokenUsageText">Vyčerpáno: 0 tok. · Zbývá: 1 000 000 (reset za --h --m)</span>
         </div>
       </div>
 
@@ -582,8 +590,13 @@
       // --- CONFIGURATION & STORAGE KEYS ---
       const STORAGE_KEYS = {
         SETTINGS: 'audiopen_settings',
-        NOTES: 'audiopen_notes_v1'
+        NOTES: 'audiopen_notes_v1',
+        NOTES_UPDATED_AT: 'audiopen_notes_updated_at_v1',
+        TOKEN_USAGE: 'audiopen_gemini_token_usage_v1'
       };
+      // Reálný denní limit Google Gemini API Free Tier pro modely Flash-Lite (1 000 000 tokenů / 1 000 požadavků za den)
+      const DAILY_TOKEN_LIMIT = 1000000;
+      const DAILY_REQUEST_LIMIT = 1000;
 
       // Default key (empty by default - user enters in Settings and saves to localStorage)
       const DEFAULT_API_KEY = '';
@@ -597,6 +610,9 @@
         gistId: '',
         autoSync: true,
         notes: [],
+        notesUpdatedAt: 0,
+        lastAutoSavedRaw: '',
+        lastAutoSavedNoteId: '',
         speechChunks: [], // All accumulated final transcripts across automatic restarts
         currentInterim: '',
         currentTranscript: '',
@@ -700,6 +716,8 @@
           modalHistory.style.display = 'flex';
           modalHistory.classList.remove('hidden');
           renderHistory();
+          // Při otevření historie okamžitě stáhneme nejnovější stav ze serveru i Gistu
+          syncFromServerAndGist(true);
         }
       }
 
@@ -707,6 +725,244 @@
         if (modalHistory) {
           modalHistory.style.display = 'none';
           modalHistory.classList.add('hidden');
+        }
+      }
+
+      // --- GEMINI TOKEN COUNTER & REAL GOOGLE QUOTA RESET (Midnight Pacific Time = 09:00 SEČ/SELČ) ---
+      function getPacificTimeParts(timestampMs) {
+        const dtf = new Intl.DateTimeFormat('en-US', {
+          timeZone: 'America/Los_Angeles',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hourCycle: 'h23'
+        });
+        const parts = dtf.formatToParts(new Date(timestampMs));
+        const map = {};
+        for (const p of parts) {
+          if (p.type !== 'literal') map[p.type] = parseInt(p.value, 10);
+        }
+        return map;
+      }
+
+      function getNextGoogleQuotaResetTimestamp(nowMs = Date.now()) {
+        // Google Gemini API reálně nuluje denní kvótu přesně o půlnoci pacifického času (00:00 America/Los_Angeles, tj. 09:00 SEČ/SELČ)
+        const p = getPacificTimeParts(nowMs);
+        const tomorrowGuessUtc = Date.UTC(p.year, p.month - 1, p.day + 1, 8, 0, 0);
+        const tp = getPacificTimeParts(tomorrowGuessUtc);
+        const pacificAsUtc = Date.UTC(tp.year, tp.month - 1, tp.day, tp.hour, tp.minute, tp.second);
+        const offsetMs = pacificAsUtc - tomorrowGuessUtc;
+        return Date.UTC(tp.year, tp.month - 1, tp.day, 0, 0, 0) - offsetMs;
+      }
+
+      function getAndSyncTokenUsageState() {
+        const now = Date.now();
+        let stateData = {
+          usedTokens: 0,
+          usedRequests: 0,
+          nextResetTimestamp: getNextGoogleQuotaResetTimestamp(now)
+        };
+
+        try {
+          const raw = localStorage.getItem(STORAGE_KEYS.TOKEN_USAGE);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            const savedTokens = Math.max(0, Number(parsed.usedTokens) || 0);
+            const savedRequests = Math.max(0, Number(parsed.usedRequests) || 0);
+            const savedReset = Number(parsed.nextResetTimestamp) || 0;
+
+            if (savedReset && now < savedReset) {
+              stateData.usedTokens = savedTokens;
+              stateData.usedRequests = savedRequests;
+              stateData.nextResetTimestamp = savedReset;
+            } else {
+              // Čas překročil půlnoc PT (09:00 SEČ/SELČ) -> automatický denní reset na 0
+              stateData.usedTokens = 0;
+              stateData.usedRequests = 0;
+              stateData.nextResetTimestamp = getNextGoogleQuotaResetTimestamp(now);
+              localStorage.setItem(STORAGE_KEYS.TOKEN_USAGE, JSON.stringify(stateData));
+            }
+          } else {
+            localStorage.setItem(STORAGE_KEYS.TOKEN_USAGE, JSON.stringify(stateData));
+          }
+        } catch (e) {
+          console.warn('Token usage localStorage warning:', e);
+        }
+
+        return stateData;
+      }
+
+      function formatCzechNumber(num) {
+        return Math.max(0, Math.round(Number(num) || 0))
+          .toString()
+          .replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+      }
+
+      function updateTokenUsageUI() {
+        const usageEl = document.getElementById('tokenUsageText');
+        const widgetEl = document.getElementById('tokenUsageWidget');
+        if (!usageEl) return;
+
+        const data = getAndSyncTokenUsageState();
+        const now = Date.now();
+        const diffMs = Math.max(0, data.nextResetTimestamp - now);
+        const totalMinutes = Math.max(1, Math.ceil(diffMs / 60000));
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+
+        const usedTokens = Math.max(0, Number(data.usedTokens) || 0);
+        const remainingTokens = Math.max(0, DAILY_TOKEN_LIMIT - usedTokens);
+        const usedRequests = Math.max(0, Number(data.usedRequests) || 0);
+        const remainingRequests = Math.max(0, DAILY_REQUEST_LIMIT - usedRequests);
+
+        const usedFormatted = formatCzechNumber(usedTokens);
+        const remainingFormatted = formatCzechNumber(remainingTokens);
+
+        usageEl.textContent = `Vyčerpáno: ${usedFormatted} tok. · Zbývá: ${remainingFormatted} (reset za ${hours}h ${minutes}m)`;
+
+        if (widgetEl) {
+          widgetEl.title = `Dnes vyčerpáno: ${usedFormatted} tokenů (${usedRequests} diktátů) | Zbývá: ${remainingFormatted} z ${formatCzechNumber(DAILY_TOKEN_LIMIT)} tokenů (${remainingRequests} diktátů) | Reset Google kvóty za ${hours}h ${minutes}m`;
+        }
+      }
+
+      function applyServerTokenUsage(serverTokenUsage) {
+        if (!serverTokenUsage || typeof serverTokenUsage !== 'object') return;
+        const localData = getAndSyncTokenUsageState();
+        const srvTokens = Math.max(0, Number(serverTokenUsage.usedTokens) || 0);
+        const srvReqs = Math.max(0, Number(serverTokenUsage.usedRequests) || 0);
+        const srvReset = Number(serverTokenUsage.nextResetTimestamp) || localData.nextResetTimestamp;
+
+        if (srvTokens >= localData.usedTokens || srvReqs >= localData.usedRequests) {
+          const merged = {
+            usedTokens: Math.max(localData.usedTokens, srvTokens),
+            usedRequests: Math.max(localData.usedRequests, srvReqs),
+            nextResetTimestamp: srvReset
+          };
+          try {
+            localStorage.setItem(STORAGE_KEYS.TOKEN_USAGE, JSON.stringify(merged));
+          } catch (e) {}
+          updateTokenUsageUI();
+        }
+      }
+
+      function recordGeminiTokenUsage(usageMetadata, serverTokenUsage) {
+        if (serverTokenUsage && typeof serverTokenUsage === 'object') {
+          applyServerTokenUsage(serverTokenUsage);
+          return;
+        }
+        if (!usageMetadata || typeof usageMetadata !== 'object') return;
+        const addedTokens =
+          Number(usageMetadata.totalTokenCount) ||
+          (Number(usageMetadata.promptTokenCount || 0) + Number(usageMetadata.candidatesTokenCount || 0));
+
+        if (addedTokens > 0) {
+          const data = getAndSyncTokenUsageState();
+          data.usedTokens += addedTokens;
+          data.usedRequests = (Number(data.usedRequests) || 0) + 1;
+          try {
+            localStorage.setItem(STORAGE_KEYS.TOKEN_USAGE, JSON.stringify(data));
+          } catch (e) {}
+          pushStateToServer();
+        }
+        updateTokenUsageUI();
+      }
+
+      // --- CROSS-DEVICE SERVER & GIST SYNC (MOBIL <-> PC) ---
+      function isStaticGithubHost() {
+        return window.location.hostname.endsWith('github.io') || window.location.protocol === 'file:';
+      }
+
+      async function pushStateToServer() {
+        if (isStaticGithubHost()) return;
+        try {
+          const tokenData = getAndSyncTokenUsageState();
+          const res = await fetch('/api/sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              notes: state.notes,
+              notesUpdatedAt: state.notesUpdatedAt,
+              tokenUsage: tokenData,
+              gistConfig: {
+                gistId: state.gistId || '',
+                githubPat: state.githubPat || ''
+              }
+            })
+          });
+          if (res.ok) {
+            const serverStore = await res.json();
+            if (serverStore && serverStore.tokenUsage) {
+              applyServerTokenUsage(serverStore.tokenUsage);
+            }
+          }
+        } catch (e) {
+          // Tiché selhání při offline režimu
+        }
+      }
+
+      async function syncFromServerAndGist(silent = true) {
+        // 1. Nejprve synchronizujeme přes serverový /api/sync (okamžité propojení mobilu a PC)
+        if (!isStaticGithubHost()) {
+          try {
+            const res = await fetch(`/api/sync?t=${Date.now()}`, {
+              method: 'GET',
+              cache: 'no-store'
+            });
+            if (res.ok) {
+              const serverStore = await res.json();
+              if (serverStore) {
+                // Synchronizace Gist údajů pokud byly zadány na PC a na mobilu chybí
+                let settingsChanged = false;
+                if (serverStore.gistConfig) {
+                  if (serverStore.gistConfig.gistId && !state.gistId) {
+                    state.gistId = serverStore.gistConfig.gistId;
+                    if (inputGistId) inputGistId.value = state.gistId;
+                    settingsChanged = true;
+                  }
+                  if (serverStore.gistConfig.githubPat && !state.githubPat) {
+                    state.githubPat = serverStore.gistConfig.githubPat;
+                    if (inputGithubPat) inputGithubPat.value = state.githubPat;
+                    settingsChanged = true;
+                  }
+                }
+                if (settingsChanged) {
+                  saveSettings();
+                  updateGistStatusUI();
+                }
+
+                // Synchronizace počítadla tokenů
+                if (serverStore.tokenUsage) {
+                  applyServerTokenUsage(serverStore.tokenUsage);
+                }
+
+                // Synchronizace historie záznamů (včetně smazání záznamu nebo Smazat vše!)
+                const srvUpdated = Number(serverStore.notesUpdatedAt) || 0;
+                const localUpdated = Number(state.notesUpdatedAt) || 0;
+
+                if (srvUpdated > localUpdated && Array.isArray(serverStore.notes)) {
+                  state.notes = serverStore.notes;
+                  state.notesUpdatedAt = srvUpdated;
+                  saveNotesLocal(false);
+                } else if (localUpdated > srvUpdated) {
+                  await pushStateToServer();
+                } else if (srvUpdated === 0 && localUpdated === 0 && state.notes.length > 0) {
+                  state.notesUpdatedAt = Date.now();
+                  saveNotesLocal(false);
+                  await pushStateToServer();
+                }
+              }
+            }
+          } catch (e) {
+            // Ignorovat při výpadku spojení
+          }
+        }
+
+        // 2. Pokud je nastaven GitHub Gist, stáhneme nejnovější stav i z Gistu
+        if (state.gistId) {
+          await pullNotesFromGist(silent);
         }
       }
 
@@ -720,15 +976,25 @@
           updateStats();
           renderHistory();
           updateGistStatusUI();
+          updateTokenUsageUI();
+          setInterval(updateTokenUsageUI, 30000);
 
-          // Automatický pull z Gistu pokud už je Gist ID v localStorage
-          if (state.gistId) {
-            pullNotesFromGist();
-          } else {
-            setTimeout(() => {
-              showToast('Tip: Pro propojení s Gistem a AI zadejte údaje v Nastavení (ozubené kolo).', 'info');
-            }, 1000);
-          }
+          // Automatická synchronizace mezi mobilem a PC při startu, při návratu do okna a každých 10 sekund
+          syncFromServerAndGist(true);
+          setInterval(() => {
+            if (!state.isRecording && !state.isProcessingAi) {
+              syncFromServerAndGist(true);
+            }
+          }, 10000);
+
+          window.addEventListener('focus', () => {
+            if (!state.isRecording) syncFromServerAndGist(true);
+          });
+          document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible' && !state.isRecording) {
+              syncFromServerAndGist(true);
+            }
+          });
         } catch (err) {
           console.error('Inicializace selhala:', err);
         }
@@ -781,13 +1047,22 @@
           } else {
             state.notes = [];
           }
+          const rawUpdated = localStorage.getItem(STORAGE_KEYS.NOTES_UPDATED_AT);
+          state.notesUpdatedAt = rawUpdated ? Number(rawUpdated) || 0 : 0;
         } catch (e) {
           state.notes = [];
+          state.notesUpdatedAt = 0;
         }
       }
 
-      function saveNotesLocal() {
-        localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(state.notes));
+      function saveNotesLocal(bumpTimestamp = true) {
+        if (bumpTimestamp) {
+          state.notesUpdatedAt = Date.now();
+        }
+        try {
+          localStorage.setItem(STORAGE_KEYS.NOTES, JSON.stringify(state.notes));
+          localStorage.setItem(STORAGE_KEYS.NOTES_UPDATED_AT, String(state.notesUpdatedAt || 0));
+        } catch (e) {}
         renderHistory();
       }
 
@@ -859,33 +1134,15 @@
         return combined;
       }
 
-      function destroyRecognition() {
-        if (recognition) {
-          const oldRec = recognition;
-          recognition = null;
-          try {
-            oldRec.onstart = null;
-            oldRec.onresult = null;
-            oldRec.onerror = null;
-            oldRec.onend = null;
-          } catch (e) {}
-          try {
-            oldRec.stop();
-          } catch (e) {}
-          try {
-            oldRec.abort();
-          } catch (e) {}
-        }
-      }
+      let isRecognitionRunning = false;
+      let pendingStopResolve = null;
 
-      function createFreshRecognition() {
+      function buildRecognitionInstance() {
         const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRec) {
-          micStatusText.innerHTML = '<span class="text-amber-400">Prohlížeč nepodporuje SpeechRecognition (doporučujeme Chrome)</span>';
+          micStatusText.innerHTML = '<span class="text-amber-400">Prohlížeč nepodporuje SpeechRecognition (doporučujeme Safari nebo Chrome)</span>';
           return null;
         }
-
-        destroyRecognition();
 
         const rec = new SpeechRec();
         rec.continuous = true;
@@ -893,11 +1150,13 @@
         rec.lang = state.speechLang || 'cs-CZ';
 
         rec.onstart = () => {
+          isRecognitionRunning = true;
           state.currentSessionTranscript = '';
         };
 
         rec.onresult = (event) => {
-          if (!state.isRecording) return;
+          // Povolíme příjem i v krátkém okně po stisku Stop (iOS Safari doposílá poslední slova těsně po stop())
+          if (!state.isRecording && !state.isStopping) return;
 
           const finalSegments = [];
           let sessionInterim = '';
@@ -928,7 +1187,7 @@
           rawTranscriptSection.classList.remove('hidden');
 
           // Spekulativní předzpracování na pozadí při krátké pauze v řeči (aby byl výsledek po kliknutí na Stop okamžitý)
-          if (displayText && !sessionInterim.trim()) {
+          if (state.isRecording && displayText && !sessionInterim.trim()) {
             scheduleSpeculativePrewarm(displayText, state.mode);
           }
         };
@@ -936,16 +1195,27 @@
         rec.onerror = (event) => {
           console.warn('Speech recognition status:', event.error);
           if (event.error === 'not-allowed') {
+            isRecognitionRunning = false;
             showToast('Přístup k mikrofonu byl zamítnut.', 'error');
             stopRecording();
-          } else if (event.error === 'no-speech') {
-            // Silence detected: benign event, onend will auto-restart if still recording
+          } else if (event.error === 'no-speech' || event.error === 'aborted') {
+            // Benigní stav na iOS/mobilu
           } else if (event.error === 'network') {
             showToast('Slabé síťové připojení pro rozpoznávání řeči.', 'error');
           }
         };
 
         rec.onend = () => {
+          isRecognitionRunning = false;
+
+          // Pokud uživatel stiskl Stop a čekáme na čisté uzavření iOS relace, okamžitě pokračujeme
+          if (pendingStopResolve) {
+            const resolveFn = pendingStopResolve;
+            pendingStopResolve = null;
+            resolveFn();
+            return;
+          }
+
           if (state.isRecording) {
             const sessionText = (state.currentSessionTranscript || '').trim();
             if (sessionText) {
@@ -957,26 +1227,26 @@
             state.currentSessionTranscript = '';
             state.currentTranscript = mergeCleanTranscript(state.speechChunks, '');
 
-            setTimeout(() => {
-              if (state.isRecording) {
-                try {
-                  const nextRec = createFreshRecognition();
-                  if (nextRec) nextRec.start();
-                } catch (e) {}
-              }
-            }, 80);
+            // Na iOS voláme start() primárně hned v rámci onend bez prodlevy
+            try {
+              rec.start();
+            } catch (e) {
+              setTimeout(() => {
+                if (state.isRecording && recognition) {
+                  try {
+                    recognition.start();
+                  } catch (e2) {}
+                }
+              }, 60);
+            }
           }
         };
 
-        recognition = rec;
         return rec;
       }
 
       function setupSpeechRecognition() {
-        const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRec) {
-          micStatusText.innerHTML = '<span class="text-amber-400">Prohlížeč nepodporuje SpeechRecognition (doporučujeme Chrome)</span>';
-        }
+        recognition = buildRecognitionInstance();
       }
 
       function toggleRecording() {
@@ -995,15 +1265,9 @@
       }
 
       function startRecording() {
-        // Kompletní vyčištění předchozí relace pro 100% čistý start další zprávy
+        // Vyčištění časovače a stavu bez volání abort(), které na iPhonu (iOS Safari) blokuje další nahrávání
         stopTimer();
         stopWaveform();
-        if (microphoneStream) {
-          try {
-            microphoneStream.getTracks().forEach((track) => track.stop());
-          } catch (e) {}
-          microphoneStream = null;
-        }
 
         state.speechChunks = [];
         state.currentSessionTranscript = '';
@@ -1011,6 +1275,7 @@
         state.currentTranscript = '';
         recordedAudioChunks = [];
         currentAudioBlob = null;
+        state.isStopping = false;
         state.isRecording = true;
 
         rawTranscriptText.textContent = 'Poslouchám hlas přímo přes mikrofon... Mluvte přirozeně.';
@@ -1018,37 +1283,70 @@
         updateMicUI(true);
         startTimer();
 
-        // Vždy vytvoříme čerstvou instanci SpeechRecognition a spustíme ji synchronně v rámci kliknutí
-        try {
-          const rec = createFreshRecognition();
-          if (rec) {
-            rec.start();
-          }
-        } catch (e) {
-          console.warn('SpeechRecognition start warning:', e);
-          setTimeout(() => {
-            if (state.isRecording) {
+        // Synchronní start v rámci tapnutí uživatele (kritické pro iPhone / iOS Safari!)
+        if (!recognition) {
+          recognition = buildRecognitionInstance();
+        }
+        if (recognition) {
+          recognition.lang = state.speechLang || 'cs-CZ';
+          try {
+            recognition.start();
+          } catch (e) {
+            // Pokud po návratu z jiné aplikace na iPhonu původní instance vyhodila InvalidStateError,
+            // vytvoříme novou instanci SYNCHRONNĚ přímo uvnitř stejného tap gesta (bez setTimeout!)
+            try {
+              recognition.onstart = null;
+              recognition.onresult = null;
+              recognition.onerror = null;
+              recognition.onend = null;
+            } catch (ignore) {}
+            recognition = buildRecognitionInstance();
+            if (recognition) {
               try {
-                const retryRec = createFreshRecognition();
-                if (retryRec) retryRec.start();
-              } catch (err2) {}
+                recognition.start();
+              } catch (err2) {
+                console.warn('SpeechRecognition sync restart warning:', err2);
+              }
             }
-          }, 100);
+          }
         }
       }
 
-      function stopRecording() {
+      async function stopRecording() {
         state.isRecording = false;
+        state.isStopping = true;
         updateMicUI(false);
         stopTimer();
         stopWaveform();
+
+        // Na iPhonu (iOS Safari) voláme POUZE recognition.stop() (nikdy abort()!) a počkáme max ~300 ms,
+        // než iOS dopochytá poslední vyslovená slova v onresult a čistě uzavře relaci přes onend.
+        if (recognition) {
+          await new Promise((resolve) => {
+            pendingStopResolve = resolve;
+            const safetyTimer = setTimeout(() => {
+              if (pendingStopResolve === resolve) {
+                pendingStopResolve = null;
+                resolve();
+              }
+            }, 320);
+
+            try {
+              recognition.stop();
+            } catch (e) {
+              clearTimeout(safetyTimer);
+              pendingStopResolve = null;
+              resolve();
+            }
+          });
+        }
+
+        state.isStopping = false;
 
         const finalSession = (state.currentSessionTranscript || '').trim();
         const transcript = mergeCleanTranscript(state.speechChunks, finalSession) || (state.currentTranscript || '').replace(/\s+/g, ' ').trim();
         state.currentTranscript = transcript;
         state.currentSessionTranscript = '';
-
-        destroyRecognition();
 
         if (transcript) {
           rawTranscriptText.textContent = transcript;
@@ -1327,6 +1625,9 @@ Tvůj úkol:
 
               if (serverRes.ok) {
                 const serverData = await serverRes.json();
+                if (serverData && (serverData.usageMetadata || serverData.tokenUsage)) {
+                  recordGeminiTokenUsage(serverData.usageMetadata, serverData.tokenUsage);
+                }
                 if (serverData && serverData.text) {
                   resultText = serverData.text.trim();
                   usedModel = serverData.model || 'gemini-3.1-flash-lite';
@@ -1381,7 +1682,7 @@ Tvůj úkol:
               const data = await response.json();
               const extracted = data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('').trim();
               if (!extracted) throw new Error('Prázdná odpověď');
-              return { text: extracted, model };
+              return { text: extracted, model, usageMetadata: data?.usageMetadata || null };
             };
 
             try {
@@ -1392,11 +1693,17 @@ Tvůj úkol:
               ]);
               resultText = winner.text;
               usedModel = winner.model;
+              if (winner.usageMetadata) {
+                recordGeminiTokenUsage(winner.usageMetadata);
+              }
             } catch (raceErr) {
               try {
                 const fallbackWinner = await callDirectModel('gemini-3.5-flash', false);
                 resultText = fallbackWinner.text;
                 usedModel = fallbackWinner.model;
+                if (fallbackWinner.usageMetadata) {
+                  recordGeminiTokenUsage(fallbackWinner.usageMetadata);
+                }
               } catch (err2) {
                 lastError = err2;
               }
@@ -1509,10 +1816,8 @@ Tvůj úkol:
         updateStats();
         showToast('Hotovo! Text je opraven a připraven.', 'success');
 
-        // Automatické uložení a sync do Gistu
-        if (state.autoSync && state.gistId && state.githubPat) {
-          saveCurrentNote(true);
-        }
+        // Každá nadiktovaná zpráva se automaticky uloží do historie a synchronizuje mezi mobilem a PC
+        saveCurrentNote(true, textInput, requestedMode);
       }
 
       function setAiLoading(isLoading) {
@@ -1573,32 +1878,59 @@ Tvůj úkol:
       }
 
       // --- SAVE CURRENT NOTE ---
-      async function saveCurrentNote(silent = false) {
+      async function saveCurrentNote(silent = false, rawSource = '', modeOverride = '') {
         const text = outputTextArea.value.trim();
         if (!text) {
           if (!silent) showToast('Prázdný text nelze uložit.', 'error');
           return;
         }
 
+        const effectiveMode = modeOverride || state.mode;
+        const effectiveRaw = (rawSource || state.currentTranscript || text).trim();
+
+        // Pokud uživatel pouze přepnul režim (Původní znění -> Shrnutí -> Body) u téže právě nadiktované zprávy,
+        // aktualizujeme záznam v historii místo vytváření duplicit
+        if (silent && state.lastAutoSavedRaw && state.lastAutoSavedRaw === effectiveRaw && state.lastAutoSavedNoteId) {
+          const existingIdx = state.notes.findIndex(n => n.id === state.lastAutoSavedNoteId);
+          if (existingIdx !== -1) {
+            state.notes[existingIdx].text = text;
+            state.notes[existingIdx].mode = effectiveMode;
+            state.notes[existingIdx].timestamp = new Date().toISOString();
+            saveNotesLocal(true);
+            pushStateToServer();
+            if (state.githubPat && state.gistId) {
+              await pushNotesToGist(true);
+            }
+            return;
+          }
+        }
+
+        const newId = 'note_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
         const newNote = {
-          id: 'note_' + Date.now(),
+          id: newId,
           text: text,
-          mode: state.mode,
+          mode: effectiveMode,
           timestamp: new Date().toISOString(),
-          raw: state.currentTranscript || text
+          raw: effectiveRaw
         };
+
+        if (silent) {
+          state.lastAutoSavedRaw = effectiveRaw;
+          state.lastAutoSavedNoteId = newId;
+        }
 
         // Add to beginning of array
         state.notes.unshift(newNote);
-        saveNotesLocal();
+        saveNotesLocal(true);
+        pushStateToServer();
 
         if (!silent) showToast('Zpráva byla uložena do historie!', 'success');
 
         // Sync with Gist if configured
         if (state.githubPat && state.gistId) {
-          await pushNotesToGist();
+          await pushNotesToGist(silent);
         } else if (!silent) {
-          showToast('Uloženo lokálně (pro sync nastavte GitHub Gist v nastavení).');
+          showToast('Uloženo do historie.');
         }
       }
 
@@ -1606,22 +1938,27 @@ Tvůj úkol:
       function clearCurrentNote() {
         if (state.isRecording) {
           state.isRecording = false;
+          state.isStopping = false;
           updateMicUI(false);
+          if (recognition) {
+            try { recognition.stop(); } catch (e) {}
+          }
         }
         stopTimer();
         stopWaveform();
-        destroyRecognition();
 
         state.speechChunks = [];
         state.currentSessionTranscript = '';
         state.currentInterim = '';
         state.currentTranscript = '';
+        state.lastAutoSavedRaw = '';
+        state.lastAutoSavedNoteId = '';
         outputTextArea.value = '';
         rawTranscriptText.textContent = 'Zatím žádný text...';
         rawTranscriptSection.classList.add('hidden');
         outputMetadata.textContent = '· Připraveno pro novou zprávu';
         updateStats();
-        showToast('Zpráva byla smazána. Můžete ihned diktovat další.');
+        showToast('Zpráva byla smazána z editoru. Můžete ihned diktovat další.');
       }
 
       // --- TEXT TO SPEECH (TTS) ---
@@ -1646,31 +1983,33 @@ Tvůj úkol:
       }
 
       // --- GITHUB GIST SYNC ---
-      async function pushNotesToGist() {
+      async function pushNotesToGist(silent = false) {
         if (!state.githubPat || !state.gistId) {
-          showToast('Chybí GitHub PAT nebo Gist ID v nastavení.', 'error');
+          if (!silent) showToast('Chybí GitHub PAT nebo Gist ID v nastavení.', 'error');
           return false;
         }
 
         setGistSyncing(true);
         try {
           const url = `https://api.github.com/gists/${state.gistId.trim()}`;
-          
+          const serializedNotes = JSON.stringify(state.notes, null, 2);
+
           // Pokud je v Gistu soubor pojmenovaný např. gistfile1.txt, přejmenujeme ho na audiopen_notes.json
           const filesPayload = {};
           if (state.detectedGistFile && state.detectedGistFile !== 'audiopen_notes.json') {
             filesPayload[state.detectedGistFile] = {
-              filename: "audiopen_notes.json",
-              content: JSON.stringify(state.notes, null, 2)
+              filename: 'audiopen_notes.json',
+              content: serializedNotes
             };
           } else {
-            filesPayload["audiopen_notes.json"] = {
-              content: JSON.stringify(state.notes, null, 2)
+            filesPayload['audiopen_notes.json'] = {
+              content: serializedNotes
             };
           }
 
           const res = await fetch(url, {
             method: 'PATCH',
+            cache: 'no-store',
             headers: {
               'Authorization': `Bearer ${state.githubPat.trim()}`,
               'Accept': 'application/vnd.github+json',
@@ -1678,7 +2017,7 @@ Tvůj úkol:
               'X-GitHub-Api-Version': '2022-11-28'
             },
             body: JSON.stringify({
-              description: "Hlasové Pero / Audio Pen Notes",
+              description: 'Hlasové Pero / Audio Pen Notes',
               files: filesPayload
             })
           });
@@ -1686,33 +2025,35 @@ Tvůj úkol:
           if (!res.ok) {
             const err = await res.text();
             console.error('Gist push error:', err);
-            showToast('Chyba zápisu do Gistu (' + res.status + ')', 'error');
+            if (!silent) showToast('Chyba zápisu do Gistu (' + res.status + ')', 'error');
             setGistSyncing(false, false);
             return false;
           }
 
           state.detectedGistFile = 'audiopen_notes.json';
           setGistSyncing(false, true);
-          showToast('Data úspěšně uložena do GitHub Gistu!', 'success');
+          if (!silent) showToast('Historie synchronizována do GitHub Gistu!', 'success');
           return true;
         } catch (e) {
           console.error(e);
-          showToast('Chyba síťového připojení k GitHub API.', 'error');
+          if (!silent) showToast('Chyba síťového připojení k GitHub API.', 'error');
           setGistSyncing(false, false);
           return false;
         }
       }
 
-      async function pullNotesFromGist() {
+      async function pullNotesFromGist(silent = false) {
         if (!state.gistId) {
-          showToast('Zadejte nejprve Gist ID v nastavení.', 'error');
-          openSettingsModal();
+          if (!silent) {
+            showToast('Zadejte nejprve Gist ID v nastavení.', 'error');
+            openSettingsModal();
+          }
           return false;
         }
 
         setGistSyncing(true);
         try {
-          const url = `https://api.github.com/gists/${state.gistId.trim()}`;
+          const url = `https://api.github.com/gists/${state.gistId.trim()}?t=${Date.now()}`;
           const headers = {
             'Accept': 'application/vnd.github+json',
             'X-GitHub-Api-Version': '2022-11-28'
@@ -1721,14 +2062,15 @@ Tvůj úkol:
             headers['Authorization'] = `Bearer ${state.githubPat.trim()}`;
           }
 
-          const res = await fetch(url, { method: 'GET', headers });
+          const res = await fetch(url, { method: 'GET', headers, cache: 'no-store' });
           if (!res.ok) {
-            showToast('Nepodařilo se načíst Gist (' + res.status + ')', 'error');
+            if (!silent) showToast('Nepodařilo se načíst Gist (' + res.status + ')', 'error');
             setGistSyncing(false, false);
             return false;
           }
 
           const gistData = await res.json();
+          const gistUpdatedMs = gistData.updated_at ? new Date(gistData.updated_at).getTime() : 0;
           let jsonContent = null;
           let matchedFilename = null;
 
@@ -1775,20 +2117,27 @@ Tvůj úkol:
             }
 
             if (Array.isArray(remoteNotes)) {
-              const existingIds = new Set(state.notes.map(n => n.id || n.timestamp));
-              let addedCount = 0;
-              for (const r of remoteNotes) {
-                const rid = r.id || r.timestamp;
-                if (!existingIds.has(rid)) {
-                  state.notes.push(r);
-                  existingIds.add(rid);
-                  addedCount++;
+              remoteNotes.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+
+              // Pokud jsme nedávno provedli lokální změnu (např. smazání záznamu) a Gist je starší, přepíšeme Gist naším novějším stavem
+              const localUpdated = Number(state.notesUpdatedAt) || 0;
+              if (localUpdated > 0 && gistUpdatedMs > 0 && localUpdated > gistUpdatedMs + 4000) {
+                if (state.githubPat) {
+                  await pushNotesToGist(true);
                 }
+              } else {
+                // Jinak přesně převezmeme stav z Gistu (včetně toho, když bylo na druhém zařízení něco smazáno!)
+                state.notes = remoteNotes;
+                if (gistUpdatedMs > localUpdated) {
+                  state.notesUpdatedAt = gistUpdatedMs;
+                }
+                saveNotesLocal(false);
+                pushStateToServer();
               }
 
-              state.notes.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-              saveNotesLocal();
-              showToast(`Gist připojen (+${addedCount} nových, celkem ${state.notes.length})`, 'success');
+              if (!silent) {
+                showToast(`Gist synchronizován (celkem ${state.notes.length} záznamů)`, 'success');
+              }
               setGistSyncing(false, true);
               return true;
             }
@@ -1796,17 +2145,17 @@ Tvůj úkol:
 
           // Pokud v Gistu vůbec žádný soubor nebyl rozpoznán, ale máme PAT, vytvoříme soubor automaticky
           if (state.githubPat) {
-            await pushNotesToGist();
+            await pushNotesToGist(true);
             setGistSyncing(false, true);
             return true;
           }
 
-          showToast('V Gistu zatím není JSON obsah.');
+          if (!silent) showToast('V Gistu zatím není JSON obsah.');
           setGistSyncing(false, true);
           return true;
         } catch (e) {
           console.error(e);
-          showToast('Chyba při stahování z Gistu.', 'error');
+          if (!silent) showToast('Chyba při stahování z Gistu.', 'error');
           setGistSyncing(false, false);
           return false;
         }
@@ -1981,10 +2330,15 @@ Tvůj úkol:
 
       window.appDeleteNote = function(id) {
         state.notes = state.notes.filter(n => n.id !== id);
-        saveNotesLocal();
-        showToast('Záznam smazán z historie.');
-        if (state.autoSync && state.githubPat && state.gistId) {
-          pushNotesToGist();
+        if (state.lastAutoSavedNoteId === id) {
+          state.lastAutoSavedNoteId = '';
+          state.lastAutoSavedRaw = '';
+        }
+        saveNotesLocal(true);
+        pushStateToServer();
+        showToast('Záznam smazán z historie na všech zařízeních.');
+        if (state.githubPat && state.gistId) {
+          pushNotesToGist(true);
         }
       };
 
@@ -2033,13 +2387,14 @@ Tvůj úkol:
         if (btnClearAllHistoryModal) {
           btnClearAllHistoryModal.addEventListener('click', () => {
             if (state.notes.length === 0) return;
-            if (confirm('Opravdu chcete smazat celou historii záznamů?')) {
-              state.notes = [];
-              saveNotesLocal();
-              showToast('Celá historie byla vymazána.');
-              if (state.autoSync && state.githubPat && state.gistId) {
-                pushNotesToGist();
-              }
+            state.notes = [];
+            state.lastAutoSavedNoteId = '';
+            state.lastAutoSavedRaw = '';
+            saveNotesLocal(true);
+            pushStateToServer();
+            showToast('Celá historie byla vymazána na všech zařízeních.');
+            if (state.githubPat && state.gistId) {
+              pushNotesToGist(true);
             }
           });
         }
@@ -2063,20 +2418,21 @@ Tvůj úkol:
         if (btnClearAllHistory) {
           btnClearAllHistory.addEventListener('click', () => {
             if (state.notes.length === 0) return;
-            if (confirm('Opravdu chcete smazat celou historii záznamů?')) {
-              state.notes = [];
-              saveNotesLocal();
-              showToast('Celá historie byla vymazána.');
-              if (state.autoSync && state.githubPat && state.gistId) {
-                pushNotesToGist();
-              }
+            state.notes = [];
+            state.lastAutoSavedNoteId = '';
+            state.lastAutoSavedRaw = '';
+            saveNotesLocal(true);
+            pushStateToServer();
+            showToast('Celá historie byla vymazána na všech zařízeních.');
+            if (state.githubPat && state.gistId) {
+              pushNotesToGist(true);
             }
           });
         }
 
         // Sync button
         btnManualSync.addEventListener('click', () => {
-          pullNotesFromGist();
+          syncFromServerAndGist(false);
         });
 
         // Settings Modal
@@ -2103,9 +2459,9 @@ Tvůj úkol:
           closeSettingsModal();
           showToast('Nastavení bylo uloženo.', 'success');
 
-          // If Gist configured, attempt a sync
+          pushStateToServer();
           if (state.gistId) {
-            pullNotesFromGist();
+            pullNotesFromGist(false);
           }
         });
 
