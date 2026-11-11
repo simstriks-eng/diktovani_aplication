@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Hlasové Pero AI - Audio Pen &amp; Gist Sync</title>
-  <meta name="description" content="Chytrý diktafon s okamžitým zpracováním hlasu přes Gemini 2.5 Flash, přepisem a synchronizací přes GitHub Gist pro mobil i PC." />
+  <meta name="description" content="Chytrý diktafon s okamžitým zpracováním hlasu přes Gemini, přepisem a synchronizací přes GitHub Gist pro mobil i PC." />
   <meta property="og:title" content="Hlasové Pero AI - Audio Pen &amp; Gist Sync" />
-  <meta property="og:description" content="Chytrý diktafon s okamžitým zpracováním hlasu přes Gemini 2.5 Flash, přepisem a synchronizací přes GitHub Gist pro mobil i PC." />
+  <meta property="og:description" content="Chytrý diktafon s okamžitým zpracováním hlasu přes Gemini, přepisem a synchronizací přes GitHub Gist pro mobil i PC." />
   <meta property="og:type" content="website" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="theme-color" content="#080c14" />
@@ -90,7 +90,7 @@
             <svg class="w-4 h-4 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
               <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-              <line x1="12" x2="12" y1="19" y2="22"/>
+              <line x1="12" y1="19" y2="22"/>
             </svg>
           </div>
         </div>
@@ -101,7 +101,7 @@
       </div>
 
       <div class="hidden sm:flex items-center gap-3 text-xs text-slate-400 font-medium">
-        <span id="modelIndicator" class="text-slate-300">gemini-2.5-flash</span>
+        <span id="modelIndicator" class="text-slate-300">gemini-3.5-flash</span>
         <span class="text-slate-600">·</span>
         <span id="gistStatusText" class="text-slate-400 flex items-center gap-1.5">
           <span id="gistStatusDot" class="w-2 h-2 rounded-full bg-slate-600"></span>
@@ -142,7 +142,6 @@
   <!-- Hlavní obsah -->
   <main class="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 pb-24 md:pb-12 flex flex-col gap-8">
 
-    <!-- Volba režimu -->
     <section class="flex flex-col items-center gap-3">
       <div class="text-xs text-slate-400 font-medium uppercase tracking-wider">
         Zvolte režim zpracování AI
@@ -178,7 +177,7 @@
             <svg id="svgMic" class="w-8 h-8 text-indigo-400 transition-transform group-hover:scale-110" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
               <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-              <line x1="12" x2="12" y1="19" y2="22"/>
+              <line x1="12" y1="19" y2="22"/>
             </svg>
             <div id="svgStop" class="hidden w-6 h-6 rounded-md bg-rose-500 shadow-md"></div>
           </div>
@@ -198,7 +197,7 @@
       <canvas id="waveformCanvas" class="w-64 h-8 mt-3 rounded-lg opacity-80" width="256" height="32"></canvas>
     </section>
 
-    <!-- Náhled zachycené řeči -->
+    <!-- Surový text z mikrofonu -->
     <section id="rawTranscriptSection" class="hidden w-full max-w-3xl mx-auto">
       <div class="p-3.5 bg-slate-900/60 rounded-xl border border-slate-800 text-xs text-slate-400 flex items-start gap-2.5">
         <span class="font-semibold text-slate-300 uppercase tracking-wider text-[10px] shrink-0 mt-0.5">Surový záznam:</span>
@@ -211,11 +210,11 @@
       </div>
     </section>
 
-    <!-- AI výsledek -->
+    <!-- Výstupní AI pole -->
     <section class="w-full max-w-3xl mx-auto flex flex-col gap-3">
       <div class="flex items-center justify-between px-1">
         <div class="flex items-center gap-2">
-          <span class="text-sm font-bold text-slate-200">Výsledek z Gemini 2.5 Flash</span>
+          <span class="text-sm font-bold text-slate-200">Výsledek z Gemini</span>
           <span id="outputMetadata" class="text-xs text-slate-500 font-medium">· Připraveno</span>
         </div>
         <div class="flex items-center gap-2">
@@ -231,7 +230,7 @@
             <svg class="w-3.5 h-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
             </svg>
-            <span class="hidden sm:inline">Upravit</span>
+            <span id="btnToggleEditLabel" class="hidden sm:inline">Upravit</span>
           </button>
         </div>
       </div>
@@ -239,7 +238,7 @@
       <div class="relative rounded-2xl bg-slate-900/90 border border-slate-800/90 shadow-xl overflow-hidden focus-within:border-indigo-500/60 transition-colors">
         <div id="aiLoadingOverlay" class="absolute inset-0 bg-[#080c14]/85 backdrop-blur-sm z-20 flex flex-col items-center justify-center gap-3 hidden transition-opacity">
           <div class="w-8 h-8 rounded-full border-2 border-indigo-500/30 border-t-indigo-500 animate-spin"></div>
-          <span class="text-xs font-semibold text-indigo-300 animate-pulse">Gemini 2.5 Flash zpracovává diktát...</span>
+          <span class="text-xs font-semibold text-indigo-300 animate-pulse">Gemini zpracovává diktát...</span>
         </div>
 
         <textarea id="outputTextArea" rows="7" placeholder="Zde se ihned po domluvení objeví upravený, vyčištěný text z Gemini..." class="w-full p-4 sm:p-5 bg-transparent text-slate-100 placeholder:text-slate-600 text-sm sm:text-base leading-relaxed resize-none focus:outline-none"></textarea>
@@ -313,7 +312,7 @@
 
   </main>
 
-  <!-- Nastavení Modal -->
+  <!-- Modal Nastavení -->
   <div id="modalSettings" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto">
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -332,7 +331,7 @@
           <label class="font-semibold text-slate-300">Gemini API Key</label>
           <input id="inputGeminiApiKey" type="password" placeholder="Vložte váš Gemini API klíč..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-200 font-mono focus:border-indigo-500 focus:outline-none" />
           <p class="text-[11px] text-slate-500">
-            Ukládá se pouze v paměti vašeho prohlížeče (localStorage). Volá model <code class="text-indigo-300">gemini-2.5-flash</code>.
+            Ukládá se pouze lokálně v prohlížeči (localStorage). Volá modely <code class="text-indigo-300">gemini-3.5-flash-lite / gemini-3.8-flash</code>.
           </p>
         </div>
 
@@ -351,9 +350,9 @@
               + Vytvořit nový Gist automaticky
             </button>
           </div>
-          <input id="inputGistId" type="text" placeholder="např. 7a8b9c0d1e2f3a4b..." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-200 font-mono focus:border-indigo-500 focus:outline-none" />
+          <input id="inputGistId" type="text" placeholder="např. 7d30fc238c6b67367efce97f487e2cff" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs text-slate-200 font-mono focus:border-indigo-500 focus:outline-none" />
           <p class="text-[11px] text-slate-500">
-            ID Gistu pro synchronizaci mezi mobilem a PC (soubor <code>audiopen_notes.json</code>).
+            ID Gistu pro synchronizaci mezi mobilem a PC (soubor <code>audiopen_notes.json</code> nebo <code>gistfile1.txt</code>).
           </p>
         </div>
 
@@ -395,7 +394,6 @@
         NOTES: 'audiopen_notes_v1'
       };
 
-      // Výchozí klíč je prázdný – zadává se bezpečně v UI a ukládá do localStorage
       const DEFAULT_API_KEY = '';
 
       let state = {
@@ -405,6 +403,7 @@
         apiKey: '',
         githubPat: '',
         gistId: '',
+        detectedGistFile: 'audiopen_notes.json',
         autoSync: true,
         notes: [],
         currentTranscript: '',
@@ -744,6 +743,7 @@
         canvasCtx.clearRect(0, 0, waveformCanvas.width, waveformCanvas.height);
       }
 
+      // --- ZPRACOVÁNÍ PŘES AKTUÁLNÍ GEMINI MODELY ---
       async function processWithGemini(inputText) {
         if (!inputText || !inputText.trim()) {
           showToast('Není zadán žádný text k přepisu.', 'error');
@@ -768,8 +768,16 @@
           systemInstruction = 'Jsi špičkový asistent pro organizaci myšlenek. Převeď následující nadiktovaný text do přehledného seznamu odrážek (bullet points) v češtině. Logicky strukturuj klíčová fakta, úkoly nebo poznámky. Nevymýšlej si nic navíc, vrať POUZE seznam odrážek.';
         }
 
-        const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+        // Aktuální oficiální řada modelů (Google nově směruje na 3.5-flash-lite / 3.8-flash)
+        const modelsToTry = [
+          'gemini-3.5-flash-lite',
+          'gemini-3.8-flash',
+          'gemini-3.5-flash',
+          'gemini-flash-latest',
+          'gemini-2.5-flash'
+        ];
         let resultText = '';
+        let lastError = null;
 
         for (const model of modelsToTry) {
           try {
@@ -778,8 +786,15 @@
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                systemInstruction: { parts: [{ text: systemInstruction }] },
-                contents: [{ role: 'user', parts: [{ text: inputText }] }],
+                systemInstruction: {
+                  parts: [{ text: systemInstruction }]
+                },
+                contents: [
+                  {
+                    role: 'user',
+                    parts: [{ text: inputText }]
+                  }
+                ],
                 generationConfig: {
                   temperature: 0.2,
                   maxOutputTokens: 2048,
@@ -787,23 +802,30 @@
               })
             });
 
-            if (!response.ok) continue;
+            if (!response.ok) {
+              const errBody = await response.text();
+              console.warn(`Model ${model} vrátil kód ${response.status}:`, errBody);
+              lastError = new Error(`HTTP ${response.status}`);
+              continue;
+            }
 
             const data = await response.json();
-            if (data.candidates && data.candidates[0]?.content?.parts) {
+            if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts) {
               resultText = data.candidates[0].content.parts.map(p => p.text).join('').trim();
               document.getElementById('modelIndicator').textContent = model;
               break;
             }
           } catch (err) {
-            console.error(`Call to ${model} failed:`, err);
+            console.error(`Volání modelu ${model} selhalo:`, err);
+            lastError = err;
           }
         }
 
         setAiLoading(false);
 
         if (!resultText) {
-          showToast('Nepodařilo se získat odpověď z Gemini. Zkontrolujte API klíč v nastavení.', 'error');
+          const detail = lastError ? ' (' + (lastError.message || lastError) + ')' : '';
+          showToast('Nepodařilo se získat odpověď z Gemini' + detail + '. Zkontrolujte API klíč.', 'error');
           return;
         }
 
@@ -925,15 +947,29 @@
         showToast('Předčítám text...');
       }
 
+      // --- CHYTRÁ GITHUB GIST SYNCHRONIZACE ---
       async function pushNotesToGist() {
         if (!state.githubPat || !state.gistId) {
-          showToast('Chybí GitHub PAT nebo Gist ID.', 'error');
+          showToast('Chybí GitHub PAT nebo Gist ID v nastavení.', 'error');
           return false;
         }
 
         setGistSyncing(true);
         try {
           const url = `https://api.github.com/gists/${state.gistId.trim()}`;
+          
+          const filesPayload = {};
+          if (state.detectedGistFile && state.detectedGistFile !== 'audiopen_notes.json') {
+            filesPayload[state.detectedGistFile] = {
+              filename: "audiopen_notes.json",
+              content: JSON.stringify(state.notes, null, 2)
+            };
+          } else {
+            filesPayload["audiopen_notes.json"] = {
+              content: JSON.stringify(state.notes, null, 2)
+            };
+          }
+
           const res = await fetch(url, {
             method: 'PATCH',
             headers: {
@@ -944,23 +980,25 @@
             },
             body: JSON.stringify({
               description: "Hlasové Pero / Audio Pen Notes",
-              files: {
-                "audiopen_notes.json": { content: JSON.stringify(state.notes, null, 2) }
-              }
+              files: filesPayload
             })
           });
 
           if (!res.ok) {
+            const err = await res.text();
+            console.error('Gist push error:', err);
             showToast('Chyba zápisu do Gistu (' + res.status + ')', 'error');
             setGistSyncing(false, false);
             return false;
           }
 
+          state.detectedGistFile = 'audiopen_notes.json';
           setGistSyncing(false, true);
-          showToast('Data uložena do GitHub Gistu!', 'success');
+          showToast('Data úspěšně uložena do GitHub Gistu!', 'success');
           return true;
         } catch (e) {
-          showToast('Chyba síťového připojení k GitHubu.', 'error');
+          console.error(e);
+          showToast('Chyba síťového připojení k GitHub API.', 'error');
           setGistSyncing(false, false);
           return false;
         }
@@ -993,20 +1031,46 @@
 
           const gistData = await res.json();
           let jsonContent = null;
+          let matchedFilename = null;
 
-          if (gistData.files['audiopen_notes.json']) {
-            jsonContent = gistData.files['audiopen_notes.json'].content;
-          } else {
-            for (const key of Object.keys(gistData.files)) {
-              if (key.endsWith('.json')) {
-                jsonContent = gistData.files[key].content;
-                break;
+          if (gistData.files && Object.keys(gistData.files).length > 0) {
+            if (gistData.files['audiopen_notes.json'] && gistData.files['audiopen_notes.json'].content !== undefined) {
+              jsonContent = gistData.files['audiopen_notes.json'].content;
+              matchedFilename = 'audiopen_notes.json';
+            } else {
+              for (const [key, file] of Object.entries(gistData.files)) {
+                if (key.endsWith('.json') && file && file.content !== undefined) {
+                  jsonContent = file.content;
+                  matchedFilename = key;
+                  break;
+                }
+              }
+              if (jsonContent === null) {
+                for (const [key, file] of Object.entries(gistData.files)) {
+                  if (file && file.content !== undefined) {
+                    const trimmed = file.content.trim();
+                    try {
+                      JSON.parse(trimmed);
+                      jsonContent = trimmed;
+                      matchedFilename = key;
+                      break;
+                    } catch (e) {
+                    }
+                  }
+                }
               }
             }
           }
 
-          if (jsonContent) {
-            const remoteNotes = JSON.parse(jsonContent);
+          if (jsonContent !== null) {
+            state.detectedGistFile = matchedFilename;
+            let remoteNotes = [];
+            try {
+              remoteNotes = JSON.parse(jsonContent);
+            } catch (err) {
+              remoteNotes = [];
+            }
+
             if (Array.isArray(remoteNotes)) {
               const existingIds = new Set(state.notes.map(n => n.id || n.timestamp));
               let addedCount = 0;
@@ -1018,18 +1082,26 @@
                   addedCount++;
                 }
               }
+
               state.notes.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
               saveNotesLocal();
-              showToast(`Synchronizováno z Gistu (+${addedCount} nových položek)`, 'success');
+              showToast(`Gist připojen (+${addedCount} nových, celkem ${state.notes.length})`, 'success');
               setGistSyncing(false, true);
               return true;
             }
           }
 
-          showToast('V Gistu zatím není soubor audiopen_notes.json.');
+          if (state.githubPat) {
+            await pushNotesToGist();
+            setGistSyncing(false, true);
+            return true;
+          }
+
+          showToast('V Gistu zatím není JSON obsah.');
           setGistSyncing(false, true);
           return true;
         } catch (e) {
+          console.error(e);
           showToast('Chyba při stahování z Gistu.', 'error');
           setGistSyncing(false, false);
           return false;
